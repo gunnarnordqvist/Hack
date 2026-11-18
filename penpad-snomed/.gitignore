@@ -6,3 +6,4 @@ node_modules/
 backend/embeddings-*.npy
 screenshots/
 web/data/snapshot.json
+docs/eval-candidates.json

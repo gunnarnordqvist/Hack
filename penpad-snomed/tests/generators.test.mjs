@@ -6,11 +6,11 @@ import { ctx, thumbState } from "./helpers.mjs";
 const T = "2026-11-18T12:00:00Z";
 
 test("clinician sentence, Swedish", () => {
-  assert.equal(sentence(thumbState(), ctx).text, "Smärta i tumme, vänster, sedan 2 dagar. Bultande, medelsvår. Debut: plötslig. Förlopp: sämre.");
+  assert.equal(sentence(thumbState(), ctx).text, "Tumvärk, vänster, sedan 2 dagar. Bultande, måttlig. Debut: abrupt start. Förlopp: förvärras.");
 });
 
 test("clinician sentence, English", () => {
-  assert.equal(sentence(thumbState({ lang: "en" }), ctx).text, "Pain in thumb, Left, for 2 days. Throbbing, moderate severity. Onset: sudden. Progress: worse.");
+  assert.equal(sentence(thumbState({ lang: "en" }), ctx).text, "Thumb ache, left, for 2 days. Pounding, moderate. Onset: abrupt start. Progress: worsening.");
 });
 
 test("patient sentence, Swedish and English", () => {
@@ -23,7 +23,7 @@ test("patient sentence, Swedish and English", () => {
 test("a term missing in the Swedish module is shown in English and reported", () => {
   const s = thumbState({ values: { onset: "1384228004" }, duration: null });
   const r = sentence(s, ctx);
-  assert.match(r.text, /Debut: rapid\./);
+  assert.match(r.text, /Debut: fast start\./);
   assert.deepEqual(r.fallbacks, ["1384228004"]);
 });
 
@@ -39,10 +39,10 @@ test("laterality is ignored when the body site is not lateralizable", () => {
 
 test("SNOMED expression", () => {
   const e = expression(thumbState(), ctx);
-  assert.match(e, /^300955002 \|Pain in thumb\| :/);
-  assert.match(e, /\{ 363698007 \|Finding site\| = \(76505004 \|Thumb structure\| : 272741003 \|Laterality\| = 7771000 \|Left\|\) \}/);
-  assert.match(e, /246112005 \|Severity\| = 6736007 \|Moderate severity\|/);
-  assert.match(e, /263502005 \|Clinical course\| = 385315009 \|Sudden onset\|/);
+  assert.match(e, /^300955002 \|thumb ache\| :/);
+  assert.match(e, /\{ 363698007 \|Finding site\| = \(76505004 \|thumb\| : 272741003 \|Laterality\| = 7771000 \|left\|\) \}/);
+  assert.match(e, /246112005 \|Severity\| = 6736007 \|moderate\|/);
+  assert.match(e, /263502005 \|Clinical course\| = 385315009 \|abrupt start\|/);
 });
 
 test("openEHR composition carries SNOMED codes and the archetype nodes", () => {

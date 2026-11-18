@@ -660,7 +660,7 @@
     }
   },
   "bodymap": {
-    "note": "Regions are our own drawing; membership of a finding is decided by the SNOMED CT hierarchy: a finding belongs to a region when its finding site is that structure or a descendant (is-a).",
+    "note": "Regions are body structures; membership of a finding is decided by the SNOMED CT hierarchy: a finding belongs to a region when its finding site is that structure or a descendant (is-a). The figure is drawn from MIT-licensed path data (web/vendor); subregions that are not drawn are reached by buttons.",
     "regions": [
       {
         "id": "head",
@@ -763,22 +763,11 @@
       {
         "id": "abdomen",
         "label": {
-          "sv": "Buk",
-          "en": "Abdomen"
+          "sv": "Buk och bäcken",
+          "en": "Abdomen and pelvis"
         },
         "codes": [
-          "818983003"
-        ],
-        "sided": false,
-        "parent": null
-      },
-      {
-        "id": "pelvis",
-        "label": {
-          "sv": "Bäcken",
-          "en": "Pelvis"
-        },
-        "codes": [
+          "818983003",
           "12921003"
         ],
         "sided": false,
@@ -990,26 +979,68 @@
         "parent": "foot"
       }
     ],
-    "zooms": {
+    "subregions": {
+      "head": [
+        "eye",
+        "ear",
+        "nose",
+        "mouth"
+      ],
+      "neck": [
+        "throat"
+      ],
+      "upperarm": [
+        "elbow"
+      ],
+      "forearm": [
+        "elbow",
+        "wrist"
+      ],
       "hand": [
         "wrist",
-        "hand",
         "thumb",
         "fingers"
       ],
       "foot": [
-        "ankle",
-        "foot",
         "toes"
-      ],
-      "head": [
-        "head",
-        "eye",
-        "ear",
-        "nose",
-        "mouth",
-        "throat"
       ]
-    }
-  }
+    },
+    "specificity": [
+      "thumb",
+      "fingers",
+      "wrist",
+      "toes",
+      "elbow",
+      "eye",
+      "ear",
+      "nose",
+      "mouth",
+      "throat",
+      "hand",
+      "foot",
+      "knee",
+      "ankle",
+      "shoulder",
+      "upperarm",
+      "forearm",
+      "thigh",
+      "lowerleg",
+      "hip",
+      "buttock",
+      "neck",
+      "chest",
+      "abdomen",
+      "back",
+      "head"
+    ]
+  },
+  "examples": [
+    "smärta i vänster tumme sedan två dagar, bultande, måttlig, plötslig debut, sämre",
+    "my thumb hurts, left, since yesterday",
+    "svullen höger fot sedan en vecka, hård",
+    "buksmärta sedan tre dagar, intermittent",
+    "headache since two days, severe, throbbing",
+    "ont i halsen sedan igår",
+    "magont"
+  ]
 }

@@ -97,10 +97,10 @@ class BodyMapConfig(unittest.TestCase):
             self.assertTrue(r["codes"] and all(c.isdigit() for c in r["codes"]), r["id"])
             if r["parent"]:
                 self.assertIn(r["parent"], ids, f"{r['id']} parent")
-        for zoom, regs in bm["zooms"].items():
-            self.assertIn(zoom, ids)
+        for parent, regs in bm["subregions"].items():
+            self.assertIn(parent, ids)
             for r in regs:
-                self.assertIn(r, ids, f"zoom {zoom}")
+                self.assertIn(r, ids, f"subregion of {parent}")
 
     def test_snapshot_maps_thumb_pain_to_the_thumb(self):
         f = HERE.parent / "web" / "data" / "snapshot.json"

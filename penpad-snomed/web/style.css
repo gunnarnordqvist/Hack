@@ -121,17 +121,16 @@ tr:last-child td { border-bottom: none; }
 .stack { display: grid; gap: 18px; min-width: 0; }
 @media (max-width: 860px) { .topgrid { grid-template-columns: minmax(0, 1fr); } .stack { order: -1; } }
 .bmhost { margin: 8px 0 4px; }
-.bm { width: 100%; max-height: 500px; display: block; }
+.bm { width: 100%; max-height: 520px; display: block; }
+.bm .outline { fill: none; stroke: var(--bm-line); stroke-width: 1.4; vector-effect: non-scaling-stroke; opacity: .6; pointer-events: none; }
 .bm .part { cursor: pointer; outline: none; }
-.bm .part .fill { fill: var(--bm-fill); stroke: var(--bm-line); stroke-width: 1.2; }
-.bm .part .ol { stroke: var(--bm-line); }
-.bm .part .lf { stroke: var(--bm-fill); }
-.bm .part:hover .fill { fill: var(--accent-soft); }
-.bm .part:hover .lf { stroke: var(--accent-soft); }
-.bm .part.hl .fill { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.8; }
-.bm .part.hl .lf { stroke: var(--warn-soft); } .bm .part.hl .ol { stroke: var(--warn); }
-.bm .part.sel .fill { fill: var(--accent); } .bm .part.sel .lf { stroke: var(--accent); }
-.bm .part:focus-visible .fill, .bm .part:focus-visible .ol { stroke: var(--fg); stroke-width: 2.6; }
+.bm .part path { fill: var(--bm-fill); stroke: var(--bm-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.bm .part:hover path { fill: var(--accent-soft); }
+.bm .part.hl path { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.8; }
+.bm .part.sel path { fill: var(--accent); }
+.bm .part:focus-visible path { stroke: var(--fg); stroke-width: 2.6; }
+.bm .lbl { font-family: var(--font-body); font-weight: 600; fill: var(--fg); pointer-events: none; paint-order: stroke; stroke: var(--surface); }
+.subs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: 12.5px; color: var(--muted); }
 .sw { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--bm-line); display: inline-block; margin-right: -6px; }
 .sw.sel { background: var(--accent); } .sw.hl { background: var(--warn-soft); border-color: var(--warn); }

@@ -6,12 +6,15 @@ import { extract, buildPhrases } from "./extract.js";
 import { sentence, expression, openEhr, fhirCondition, codesUsed, term } from "./generators.js";
 import { rankLexical, lexScore } from "./lexrank.js";
 import { drawBodyMap, ZOOMABLE, mainViewFor, drawnIn, sideOfCode } from "./bodymap.js";
+import * as TX from "./txclient.js";
 
 const I = {
   sv: {
     title: "Smarta formulär med SNOMED CT",
     sub: "Skriv vad patienten har. Systemet föreslår ett begrepp, frågar bara det som är giltigt och bekräftar med en mening.",
     lang: "Språk", mode: "Läge", clinician: "Klinik", patient: "Patient",
+    notices: "Licenser och tredjepartsmaterial", subs: "Delområden", loading: "Laddar…", txError: "Kunde inte nå terminologiservern.",
+    clientNote: "Live mot HL7 Nordics terminologiserver, direkt från din webbläsare. Den här sidan lagrar inget SNOMED-innehåll. Ingen modell: förslagen kommer från serverns textfilter.",
     mapTitle: "…eller peka på kroppen", front: "Fram", back: "Bak", toBody: "← Hela kroppen", location: "Plats",
     mapHint: "Klicka på en kroppsdel. Hand, fot och huvud zoomar in. Sidan du klickar på blir patientens sida.",
     findingsHere: "Fynd på vald plats", showMore: "Visa fler", all: "Alla", noFindings: "Inga fynd i listan för den här platsen.",
@@ -48,6 +51,8 @@ const I = {
     title: "Smart forms with SNOMED CT",
     sub: "Type what the patient has. The system proposes a concept, asks only what is valid and confirms with a sentence.",
     lang: "Language", mode: "Mode", clinician: "Clinician", patient: "Patient",
+    notices: "Licences and third-party material", subs: "Sub-areas", loading: "Loading…", txError: "Could not reach the terminology server.",
+    clientNote: "Live against the HL7 Nordics terminology server, straight from your browser. This page stores no SNOMED content. No model: suggestions come from the server text filter.",
     mapTitle: "…or point at the body", front: "Front", back: "Back", toBody: "← Whole body", location: "Site",
     mapHint: "Click a body part. Hand, foot and head zoom in. The side you click becomes the patient's side.",
     findingsHere: "Findings at the chosen site", showMore: "Show more", all: "All", noFindings: "No findings listed for this site.",
@@ -83,7 +88,7 @@ const I = {
 };
 
 const S = {
-  snap: null, live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
+  snap: null, source: "snapshot", known: new Map(), universe: [], optionsLoaded: new Set(), live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
   finding: null, values: {}, prefilled: new Set(), duration: null, expanded: new Set(), confirmed: false,
   tab: "expr", validation: {}, manual: "", sampleHit: null,
   map: { view: "front", main: "front", side: null, sel: null, topic: "all", more: false }, prefilledMap: new Set(),
@@ -114,26 +119,91 @@ const plainSite = (site) => (S.lang === "sv" ? site.sv || site.en : site.en).rep
 const browserLink = (code) => `https://browser.ihtsdotools.org/?perspective=full&conceptId1=${code}&edition=MAIN`;
 
 // ------------------------------------------------------------------------------------------------ data flow
+const examples = () => (S.snap.samples && S.snap.samples.length ? S.snap.samples.map((x) => x.text) : S.snap.cfg.examples || []);
+const liveCheck = () => S.live || S.source === "client";
+const nmI = (it) => (S.lang === "sv" ? it.sv || it.en : it.en || it.sv);
+
+function configCodes(cfg) {
+  const c = new Set();
+  for (const sl of Object.values(cfg.slots)) for (const x of [...(sl.quick || []), ...(sl.more || [])]) c.add(x);
+  for (const u of cfg.units) c.add(u.code);
+  for (const x of Object.values(cfg.meta.attributes)) c.add(x);
+  return [...c];
+}
+
+/** The same shape as the snapshot, but empty: everything is fetched from the terminology server when needed. */
+function clientSnap(cfg) {
+  const options = {};
+  for (const [name, sl] of Object.entries(cfg.slots)) {
+    if (sl.kind === "duration") continue;
+    options[name] = [...sl.quick.map((code) => ({ code, quick: true })), ...(sl.more || []).filter((c) => !sl.quick.includes(c)).map((code) => ({ code, quick: false }))];
+  }
+  return {
+    cfg, labels: {}, options, universe: [], details: {}, samples: [], meta: { client: true },
+    bodymap: { regions: cfg.bodymap.regions.map((r) => ({ id: r.id, label: r.label, sided: r.sided, parent: r.parent, count: null })), subregions: cfg.bodymap.subregions, findings: {}, siteRegions: {} },
+  };
+}
+
 async function init() {
-  const snap = await (await fetch("data/snapshot.json")).json();
-  S.snap = snap;
-  S.phrases = buildPhrases(snap.cfg, snap.labels);
-  S.universe = snap.universe;
-  S.uniMap = new Map(snap.universe.map((u) => [u[0], u]));
+  let snap = null;
+  try { const r = await fetch("data/snapshot.json"); if (r.ok) snap = await r.json(); } catch (_) { /* no snapshot: client mode */ }
   try {
-    const c = new AbortController();
-    setTimeout(() => c.abort(), 1500);
-    const r = await fetch("api/health", { signal: c.signal });
-    const j = r.ok ? await r.json() : null;
-    S.live = !!(j && j.ok);
-    S.liveModel = j && j.model;
-  } catch (_) { S.live = false; }
+    if (snap) {
+      S.source = "snapshot"; S.snap = snap; S.universe = snap.universe;
+      S.known = new Map(snap.universe.map((u) => [u[0], u]));
+    } else {
+      S.source = "client";
+      const cfg = await (await fetch("data/config.json")).json();
+      S.snap = clientSnap(cfg);
+      $("#hdr").textContent = t("loading");
+      S.snap.labels = await TX.labelsFor(configCodes(cfg));
+    }
+  } catch (e) { $("#hdr").textContent = t("txError") + " " + (e && e.message ? e.message : ""); return; }
+  S.phrases = buildPhrases(S.snap.cfg, S.snap.labels);
+  if (S.source === "snapshot") {
+    try {
+      const c = new AbortController();
+      setTimeout(() => c.abort(), 1500);
+      const r = await fetch("api/health", { signal: c.signal });
+      const j = r.ok ? await r.json() : null;
+      S.live = !!(j && j.ok);
+      S.liveModel = j && j.model;
+    } catch (_) { S.live = false; }
+  }
   render();
-  const first = S.snap.samples[0];
-  if (first) { S.text = first.text; interpret(); }
+  const first = examples()[0];
+  if (first) { S.text = first; interpret(); }
+}
+
+/** Candidates straight from the server: its text filter in English and Swedish, ranked by token overlap. No model. */
+async function clientCandidates(q, k = 5) {
+  const calls = [];
+  for (const tp of S.snap.cfg.topics) for (const lang of ["en", "sv"]) {
+    calls.push(TX.expand(tp.ecl, { filter: q, lang, count: 40 }).then((r) => ({ tp, lang, r })).catch(() => null));
+  }
+  const got = (await Promise.all(calls)).filter(Boolean);
+  if (!got.length) throw new TX.TxError("no answer");
+  const by = new Map();
+  for (const { tp, lang, r } of got) for (const it of r.items) {
+    const e = by.get(it.code) || { code: it.code, en: null, sv: null, topic: tp.id };
+    e[lang] = it.display;
+    by.set(it.code, e);
+  }
+  const boost = Math.min(0.3, 0.3 / Math.max(1, by.size));
+  const rows = [...by.values()].map((e) => {
+    if (e.sv === e.en) e.sv = null;
+    const lex = Math.max(e.en ? lexScore(q, e.en) : 0, e.sv ? lexScore(q, e.sv) : 0);
+    const score = lex + 0.25 + boost;
+    S.known.set(e.code, [e.code, e.en || e.sv, e.sv, e.topic]);
+    return { ...e, score: +score.toFixed(4), confidence: +Math.min(1, score).toFixed(3), scores: { filter: true, lex: +lex.toFixed(3), emb: null } };
+  });
+  rows.sort((a, b) => b.score - a.score || (nmI(a) || "").length - (nmI(b) || "").length);
+  const items = rows.slice(0, k).map((r, i) => ({ ...r, rank: i + 1 }));
+  return { query: q, mode: "text", items, low_confidence: !items.length || items[0].score < 0.45, model: null, threshold: 0.45 };
 }
 
 async function candidatesFor(rest, rawText) {
+  if (S.source === "client") return clientCandidates(rest || rawText);
   const sample = S.snap.samples.find((s) => s.text.trim().toLowerCase() === rawText.trim().toLowerCase());
   S.sampleHit = sample || null;
   if (S.live) {
@@ -150,9 +220,10 @@ async function candidatesFor(rest, rawText) {
 async function interpret() {
   S.confirmed = false;
   S.ex = extract(S.text, S.snap.cfg, S.snap.labels, S.phrases);
-  S.cand = await candidatesFor(S.ex.rest, S.text);
+  try { S.cand = await candidatesFor(S.ex.rest, S.text); }
+  catch (e) { S.cand = { query: S.text, mode: "text", items: [], low_confidence: true, error: true }; }
   S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = S.ex.duration; S.expanded = new Set();
-  if (S.cand.items.length && !S.cand.low_confidence) selectFinding(S.cand.items[0].code, true);
+  if (S.cand.items.length && !S.cand.low_confidence) await selectFinding(S.cand.items[0].code, true);
   else render();
 }
 
@@ -162,10 +233,30 @@ function visibleSlots(f) {
   return topic.slots.filter((s) => s !== "laterality" || (f.site && f.site.lateralizable));
 }
 
-function selectFinding(code, fromText, fromMap) {
-  const u = S.uniMap.get(code);
+/** Body regions of a finding site, most specific first (asked of the server: the site's ancestors). */
+async function ensureSiteRegions(site) {
+  const bm = S.snap.bodymap;
+  if (bm.siteRegions[site] !== undefined) return;
+  const anc = await TX.ancestors(site);
+  const regions = S.snap.cfg.bodymap.regions;
+  bm.siteRegions[site] = (S.snap.cfg.bodymap.specificity || []).filter((rid) => regions.find((r) => r.id === rid)?.codes.some((c) => anc.has(c)));
+}
+
+async function selectFinding(code, fromText, fromMap) {
+  const u = S.known.get(code);
   if (!u) return;
-  S.finding = { code, en: u[1], sv: u[2], topic: u[3], site: S.snap.details[code] || null };
+  let en = u[1], sv = u[2], site = null;
+  if (S.source === "client") {
+    try {
+      const [lab, s2] = await Promise.all([TX.labelsFor([code]), TX.findingDetails(code, S.snap.cfg.meta.refsets.lateralizable)]);
+      en = lab[code].en || en; sv = lab[code].sv; site = s2;
+      if (site) { S.snap.details[code] = site; await ensureSiteRegions(site.code); }
+      S.known.set(code, [code, en, sv, u[3]]);
+    } catch (e) { $("#cands").append(h("p", { class: "warn" }, t("txError"))); return; }
+  } else {
+    site = S.snap.details[code] || null;
+  }
+  S.finding = { code, en, sv, topic: u[3], site };
   const vis = new Set(visibleSlots(S.finding));
   S.values = {}; S.prefilled = new Set();
   if (fromText && S.ex) {
@@ -181,17 +272,58 @@ function selectFinding(code, fromText, fromMap) {
   focusMapOn(S.finding);
   S.confirmed = false;
   render();
-  if (S.live) validateAll();
+  if (liveCheck()) validateAll();
 }
 
 async function validateAll() {
   for (const { code } of codesUsed(gstate(), ctx())) {
     if (S.validation[code]) continue;
     S.validation[code] = { state: "checking" };
-    fetch("api/validate?code=" + code).then((r) => r.json()).then((j) => { S.validation[code] = { state: j.ok ? "ok" : "bad" }; renderOutputs(); })
+    const check = S.source === "client" ? TX.validate(code) : fetch("api/validate?code=" + code).then((r) => r.json());
+    check.then((j) => { S.validation[code] = { state: j.ok ? "ok" : "bad" }; renderOutputs(); })
       .catch(() => { S.validation[code] = { state: "build" }; renderOutputs(); });
   }
   renderOutputs();
+}
+
+/** Findings of a body region from the server: finding site is that structure or a descendant (ECL attribute search). */
+async function ensureRegion(region) {
+  const bm = S.snap.bodymap;
+  if (bm.findings[region]) return;
+  const info = S.snap.cfg.bodymap.regions.find((r) => r.id === region);
+  const sites = info.codes.map((c) => `<< ${c}`).join(" OR ");
+  const attr = S.snap.cfg.meta.attributes.findingSite;
+  const calls = [];
+  for (const tp of S.snap.cfg.topics) for (const lang of ["en", "sv"]) calls.push(TX.expand(`(${tp.ecl}) : ${attr} = (${sites})`, { lang, count: 300 }).then((r) => ({ tp, lang, r })));
+  const got = await Promise.all(calls);
+  const by = new Map();
+  for (const { tp, lang, r } of got) for (const it of r.items) {
+    const e = by.get(it.code) || { code: it.code, en: null, sv: null, topic: tp.id };
+    e[lang] = it.display;
+    by.set(it.code, e);
+  }
+  bm.findings[region] = [...by.values()].map((e) => {
+    if (e.sv === e.en) e.sv = null;
+    S.known.set(e.code, [e.code, e.en || e.sv, e.sv, e.topic]);
+    return e.code;
+  });
+}
+
+/** Extra options of a slot (more…) from the server, in the same order the snapshot builder uses. */
+async function ensureOptions(slot) {
+  const sl = S.snap.cfg.slots[slot];
+  const [en, sv] = await Promise.all([TX.expand(sl.ecl, { lang: "en", count: 300 }), TX.expand(sl.ecl, { lang: "sv", count: 300 })]);
+  const svm = new Map(sv.items.map((i) => [i.code, i.display]));
+  const base = [...sl.quick, ...(sl.more || []).filter((c) => !sl.quick.includes(c))];
+  const extra = [];
+  for (const i of [...en.items].sort((a, b) => a.display.localeCompare(b.display))) {
+    if (!base.includes(i.code) && extra.length < sl.limit) {
+      extra.push(i.code);
+      S.snap.labels[i.code] = { en: i.display, sv: svm.get(i.code) !== i.display ? svm.get(i.code) : null };
+    }
+  }
+  S.snap.options[slot] = [...base.map((code) => ({ code, quick: sl.quick.includes(code) })), ...extra.map((code) => ({ code, quick: false }))];
+  S.optionsLoaded.add(slot);
 }
 
 // ------------------------------------------------------------------------------------------------ rendering
@@ -214,7 +346,7 @@ function renderHeader() {
       h("div", { class: "ctl" },
         seg(t("lang"), [["sv", "SV"], ["en", "EN"]], S.lang, (v) => { S.lang = v; render(); }),
         seg(t("mode"), [["clinician", t("clinician")], ["patient", t("patient")]], S.mode, (v) => { S.mode = v; render(); }))),
-    h("p", { class: "badge " + (S.live ? "live" : "static") }, S.live ? `${t("liveNote")} (${S.liveModel || "model"})` : t("staticNote")));
+    h("p", { class: "badge " + (S.live || S.source === "client" ? "live" : "static") }, S.source === "client" ? t("clientNote") : S.live ? `${t("liveNote")} (${S.liveModel || "model"})` : t("staticNote")));
 }
 
 function renderInput() {
@@ -238,7 +370,7 @@ function renderInput() {
   $("#go").textContent = t("go"); $("#rs").textContent = t("reset");
   $("#notes").textContent = t("localNote");
   $("#samples").replaceChildren(h("span", { class: "seglabel" }, t("tryThese")),
-    ...S.snap.samples.map((s) => h("button", { type: "button", class: "chip", onclick: () => { S.text = s.text; $("#text").value = s.text; interpret(); } }, s.text.length > 46 ? s.text.slice(0, 44) + "…" : s.text)));
+    ...examples().map((txt) => h("button", { type: "button", class: "chip", onclick: () => { S.text = txt; $("#text").value = txt; interpret(); } }, txt.length > 46 ? txt.slice(0, 44) + "…" : txt)));
 }
 
 // ------------------------------------------------------------------------------------------------ body map
@@ -278,8 +410,8 @@ function mapFindings() {
   const bm = S.snap.bodymap;
   const codes = bm.findings[M.sel.region] || [];
   const rest = S.ex && S.ex.rest;
-  const name = (u) => (S.lang === "sv" ? u[2] || u[1] : u[1]);
-  const rows = codes.map((c) => S.uniMap.get(c)).filter(Boolean).filter((u) => M.topic === "all" || u[3] === M.topic)
+  const name = (u) => (S.lang === "sv" ? u[2] || u[1] : u[1] || u[2]);
+  const rows = codes.map((c) => S.known.get(c)).filter(Boolean).filter((u) => M.topic === "all" || u[3] === M.topic)
     .map((u) => ({ u, score: rest ? Math.max(lexScore(rest, u[1]), u[2] ? lexScore(rest, u[2]) : 0) : 0 }));
   rows.sort((a, b) => b.score - a.score || name(a.u).localeCompare(name(b.u), S.lang));
   return rows;
@@ -301,7 +433,22 @@ function renderMap() {
   if (!M.sel) { box.append(h("p", { class: "hint" }, t("mapHint"))); return; }
   box.append(h("div", { class: "loc" }, h("strong", {}, t("location") + ": "), regionLabel(M.sel.region) + (M.sel.side ? " (" + sideLabel(M.sel.side) + ")" : ""),
     h("button", { type: "button", class: "ghost small", onclick: () => { M.sel = null; renderMap(); } }, "×")));
+  const info = regionInfo(M.sel.region);
+  const subs = S.snap.cfg.bodymap.subregions[M.sel.region] || [];
+  if (info?.parent || subs.length) {
+    const go = (r) => () => { M.sel = { region: r, side: M.sel.side }; M.more = false; renderMap(); };
+    box.append(h("div", { class: "subs" }, h("span", { class: "seglabel" }, t("subs")),
+      info?.parent ? h("button", { type: "button", class: "chip", "data-sub": info.parent, onclick: go(info.parent) }, "↑ " + regionLabel(info.parent)) : null,
+      subs.map((r) => h("button", { type: "button", class: "chip", "data-sub": r, onclick: go(r) }, regionLabel(r)))));
+  }
   box.append(seg("", [["all", t("all")], ...S.snap.cfg.topics.map((x) => [x.id, x.label[S.lang]])], M.topic, (v) => { M.topic = v; M.more = false; renderMap(); }));
+  if (S.source === "client" && !S.snap.bodymap.findings[M.sel.region]) {
+    const want = M.sel.region;
+    box.append(h("p", { class: "hint", id: "maploading" }, t("loading")));
+    ensureRegion(want).then(() => { if (S.map.sel && S.map.sel.region === want) renderMap(); })
+      .catch(() => box.append(h("p", { class: "warn" }, t("txError"))));
+    return;
+  }
   const rows = mapFindings();
   box.append(h("h3", { class: "listh" }, `${t("findingsHere")} (${rows.length})`));
   if (!rows.length) { box.append(h("p", { class: "hint" }, t("noFindings"))); return; }
@@ -324,7 +471,8 @@ function renderCandidates() {
   if (both) {
     box.append(seg("", [["text", t("baseline")], ["rerank", t("rerank")]], S.candMode, async (m) => { S.candMode = m; S.cand = await candidatesFor(S.ex.rest, S.text); render(); }));
   }
-  if (!S.cand.items.length) box.append(h("p", { class: "warn" }, t("noMatch")));
+  if (S.cand.error) box.append(h("p", { class: "warn" }, t("txError")));
+  else if (!S.cand.items.length) box.append(h("p", { class: "warn" }, t("noMatch")));
   else if (S.cand.low_confidence) box.append(h("p", { class: "warn" }, "⚠ " + t("lowConf")));
   const list = h("ul", { class: "cands" });
   for (const it of S.cand.items.slice(0, 5)) {
@@ -332,7 +480,7 @@ function renderCandidates() {
     const det = S.snap.details[it.code];
     list.append(h("li", { class: "cand" + (sel ? " sel" : "") },
       h("div", { class: "cmain" },
-        h("div", { class: "cname" }, h("strong", {}, S.lang === "sv" ? it.sv || it.en : it.en), it.sv && S.lang === "sv" ? h("span", { class: "alt" }, it.en) : (S.lang === "en" && it.sv ? h("span", { class: "alt" }, it.sv) : null)),
+        h("div", { class: "cname" }, h("strong", {}, nmI(it)), it.sv && it.en ? h("span", { class: "alt" }, S.lang === "sv" ? it.en : it.sv) : null),
         h("div", { class: "cmeta" },
           h("a", { href: browserLink(it.code), target: "_blank", rel: "noopener", class: "mono" }, it.code),
           det ? h("span", {}, `${t("site")}: ${plainSite(det)} (${det.lateralizable ? t("sided") : t("notSided")})`) : null,
@@ -348,11 +496,21 @@ function manualSearch() {
   const wrap = h("div", { class: "manual" });
   const input = h("input", { type: "search", id: "manual", placeholder: t("search"), value: S.manual, "aria-label": t("search") });
   const out = h("ul", { class: "cands small" });
+  const draw = (items) => out.replaceChildren(...items.map((it) => h("li", { class: "cand" }, h("div", { class: "cmain" }, h("strong", {}, nmI(it)), h("span", { class: "mono dim" }, it.code)),
+    h("button", { type: "button", class: "primary small", onclick: () => selectFinding(it.code, true) }, t("pick")))));
+  let timer = null;
   const run = () => {
     S.manual = input.value;
-    const r = rankLexical(S.manual, S.universe, 8, 0);
-    out.replaceChildren(...r.items.map((it) => h("li", { class: "cand" }, h("div", { class: "cmain" }, h("strong", {}, S.lang === "sv" ? it.sv || it.en : it.en), h("span", { class: "mono dim" }, it.code)),
-      h("button", { type: "button", class: "primary small", onclick: () => selectFinding(it.code, true) }, t("pick")))));
+    if (S.source === "client") {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const q = S.manual.trim();
+        if (q.length < 2) { draw([]); return; }
+        try { draw((await clientCandidates(q, 8)).items); } catch (_) { out.replaceChildren(h("li", { class: "warn" }, t("txError"))); }
+      }, 300);
+      return;
+    }
+    draw(rankLexical(S.manual, S.universe, 8, 0).items);
   };
   input.addEventListener("input", run);
   wrap.append(input, out);
@@ -383,10 +541,17 @@ function slotBlock(slot) {
     const on = S.values[slot] === o.code;
     row.append(h("button", { type: "button", class: "opt" + (on ? " on" : ""), "aria-pressed": on ? "true" : "false", onclick: () => {
       if (on) delete S.values[slot]; else S.values[slot] = o.code;
-      S.prefilled.delete(slot); S.prefilledMap.delete(slot); S.confirmed = false; renderForm(); renderConfirm(); renderOutputs(); renderMap(); if (S.live) validateAll();
+      S.prefilled.delete(slot); S.prefilledMap.delete(slot); S.confirmed = false; renderForm(); renderConfirm(); renderOutputs(); renderMap(); if (liveCheck()) validateAll();
     } }, lab(o.code)));
   }
-  if (extra.length) row.append(h("button", { type: "button", class: "opt more", "aria-expanded": open ? "true" : "false", onclick: () => { if (open) S.expanded.delete(slot); else S.expanded.add(slot); renderForm(); } }, open ? t("fewer") : `${t("more")} (+${extra.length})`));
+  const canLoad = S.source === "client" && cfg.limit && !S.optionsLoaded.has(slot);
+  if (extra.length || canLoad) {
+    row.append(h("button", { type: "button", class: "opt more", "aria-expanded": open ? "true" : "false", onclick: async () => {
+      if (open) S.expanded.delete(slot);
+      else { if (canLoad) { try { await ensureOptions(slot); } catch (_) { return; } } S.expanded.add(slot); }
+      renderForm();
+    } }, open ? t("fewer") : extra.length ? `${t("more")} (+${extra.length})` : t("more")));
+  }
   blk.append(row);
   const ecl = h("details", { class: "why" }, h("summary", {}, t("why")),
     h("p", {}, t("whyText")), h("code", { class: "ecl" }, cfg.ecl), h("p", { class: "hint" }, t("quickText")), slot === "laterality" ? h("p", { class: "hint" }, t("latWhy")) : null);
@@ -433,7 +598,7 @@ function pre(text, extraNote) {
 
 function statusCell(code) {
   const v = S.validation[code];
-  if (S.live && v) {
+  if (liveCheck() && v) {
     if (v.state === "checking") return h("span", { class: "dim" }, t("checking"));
     if (v.state === "ok") return h("span", { class: "okc" }, "✓ " + t("okLive"));
     if (v.state === "bad") return h("span", { class: "badc" }, "✗ " + t("bad"));
@@ -464,7 +629,7 @@ function renderOutputs() {
 }
 
 function renderFoot() {
-  $("#foot").textContent = t("foot");
+  $("#foot").replaceChildren(t("foot") + " ", h("a", { href: "THIRD_PARTY_NOTICES.md", target: "_blank", rel: "noopener" }, t("notices")));
 }
 
 init();

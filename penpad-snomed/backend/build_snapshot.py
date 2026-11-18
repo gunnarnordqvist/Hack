@@ -103,7 +103,7 @@ def bodymap_data(tx: Tx, cfg: dict, details: dict) -> dict:
     site_regions = {k: v for k, v in site_regions.items() if v}
     return {
         "regions": [{"id": r["id"], "label": r["label"], "sided": r["sided"], "parent": r["parent"], "count": len(findings[r["id"]])} for r in regions],
-        "zooms": cfg["bodymap"]["zooms"], "findings": findings, "siteRegions": site_regions,
+        "subregions": cfg["bodymap"]["subregions"], "findings": findings, "siteRegions": site_regions,
     }
 
 
