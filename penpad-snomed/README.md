@@ -7,6 +7,8 @@ the result as a plain sentence, a post-coordinated SNOMED CT expression, an open
 > Demo, not clinical decision support. No real patient data. The code was written by an AI agent (Claude) under
 > Gunnar Nordqvist's direction and checked by running it; the clinical content has had no clinical review.
 
+**Try it online:** https://gunnarnordqvist.github.io/Hack/ (client mode, see below; it needs a network connection to the terminology server).
+
 ## The idea, in the track's three steps
 
 | Step | What happens here |
@@ -47,6 +49,19 @@ python backend/server.py --port 8765             # first start downloads the mod
 ```
 
 The page picks the mode itself: a snapshot if there is one, otherwise client mode; a backend if `/api/health` answers.
+
+## Publishing the site
+
+The public site is the `gh-pages` branch (built by `tools/build_site.py`, no SNOMED CT content, no snapshot).
+
+```sh
+python tools/publish_site.py     # builds, commits to gh-pages in a temporary worktree, pushes
+```
+
+Then GitHub → **Actions → "Deploy site" → Run workflow**. The workflow is on `main` because the `github-pages` environment only
+accepts deployments from the default branch (a workflow on `gh-pages` was tried and refused). Alternatively set Pages to
+"Deploy from a branch: gh-pages"; then no workflow is needed. After publishing, `node tests/e2e.cjs https://gunnarnordqvist.github.io/Hack/ out/`
+runs the 26 browser checks against the live site.
 
 ## What was checked
 
@@ -125,7 +140,7 @@ backend/   tx.py (FHIR client + disk cache)  rank.py  verify_topics.py  build_sn
 web/       index.html  app.js  extract.js (free text -> slots)  generators.js  lexrank.js  txclient.js (browser FHIR client)
            bodymap.js  vendor/bodypaths.js (generated, MIT)  data/snapshot.json (generated, not committed)
 tests/     *.test.mjs  test_backend.py  e2e.cjs  fixtures/labels.json (neutral labels)
-tools/     build_site.py  build_body_paths.py  make_artifact.py  make_test_labels.py  write_notices.py  bbox_parts.cjs
+tools/     build_site.py  publish_site.py  build_body_paths.py  make_artifact.py  make_test_labels.py  write_notices.py  bbox_parts.cjs
 THIRD_PARTY_NOTICES.md
 ```
 
