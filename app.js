@@ -5,7 +5,7 @@
 import { extract, buildPhrases } from "./extract.js";
 import { sentence, expression, openEhr, fhirCondition, codesUsed, term } from "./generators.js";
 import { rankLexical, lexScore } from "./lexrank.js";
-import { drawBodyMap, ZOOMABLE, mainViewFor, drawnIn, sideOfCode } from "./bodymap.js";
+import { drawBodyMap, ZOOMABLE, mainViewFor, drawnIn, sideOfCode, mentionsSide } from "./bodymap.js";
 import * as TX from "./txclient.js";
 
 const I = {
@@ -411,7 +411,10 @@ function mapFindings() {
   const codes = bm.findings[M.sel.region] || [];
   const rest = S.ex && S.ex.rest;
   const name = (u) => (S.lang === "sv" ? u[2] || u[1] : u[1] || u[2]);
+  // a chosen side removes findings that name the other side ("left thumb" when the right hand was clicked)
+  const other = M.sel.side === "left" ? "right" : M.sel.side === "right" ? "left" : null;
   const rows = codes.map((c) => S.known.get(c)).filter(Boolean).filter((u) => M.topic === "all" || u[3] === M.topic)
+    .filter((u) => !other || !mentionsSide([u[1], u[2]], other))
     .map((u) => ({ u, score: rest ? Math.max(lexScore(rest, u[1]), u[2] ? lexScore(rest, u[2]) : 0) : 0 }));
   rows.sort((a, b) => b.score - a.score || name(a.u).localeCompare(name(b.u), S.lang));
   return rows;
