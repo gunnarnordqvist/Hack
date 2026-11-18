@@ -64,7 +64,7 @@ export function mentionsSide(names, side) {
 }
 
 // a region that is not drawn gets its nearest drawn relative highlighted instead
-const FALLBACK = { thumb: "hand", fingers: "hand", wrist: "hand", toes: "foot", eye: "head", ear: "head", nose: "head", mouth: "head", throat: "neck", elbow: "upperarm", tongue: "mouth", teeth: "mouth", larynx: "throat" };
+const FALLBACK = { thumb: "hand", fingers: "hand", wrist: "hand", toes: "foot", eye: "head", ear: "head", nose: "head", mouth: "head", throat: "neck", elbow: "upperarm", tongue: "mouth", teeth: "mouth", larynx: "throat", arm: "upperarm", leg: "thigh" };
 
 export function drawnIn(view, region, side) {
   return shapesFor(view, side).shapes.some((s) => s.region === region);

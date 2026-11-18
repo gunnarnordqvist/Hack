@@ -56,3 +56,9 @@ test("aspect words fill the aspect, in both languages", () => {
   assert.equal(run("pain in the left knee, lateral").values.aspect, "49370004");
   assert.equal(run("pain in the knee").values.aspect, undefined);
 });
+
+test("relative time words: last week, last month, förra veckan", () => {
+  assert.deepEqual(run("swollen ankle since last week").duration, { n: 7, unit: "day" });
+  assert.deepEqual(run("pain for last month").duration, { n: 30, unit: "day" });
+  assert.deepEqual(run("ont i knät sedan förra veckan").duration, { n: 7, unit: "day" });
+});

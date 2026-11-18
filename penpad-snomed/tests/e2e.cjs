@@ -233,7 +233,7 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   const mi = await page.evaluate(() => window.__penpad.multi.items.map((i) => ({ status: i.status, lat: i.entry && i.entry.values.laterality, site: i.entry && i.entry.finding.site && i.entry.finding.site.en, dur: i.entry && i.entry.duration && i.entry.duration.n })));
   check("one sentence, three body parts: every proposal is found", mi.length === 3 && mi.every((x) => x.status === "ok"), JSON.stringify(mi));
   check("each body part keeps its own side", mi[0].lat === "24028007" && mi[1].lat === "7771000" && !mi[2].lat, JSON.stringify(mi.map((x) => x.lat)));
-  check("each finding's site is inside its own body part", /arm|elbow/i.test(mi[0].site) && /hand/i.test(mi[1].site) && /head/i.test(mi[2].site), mi.map((x) => x.site).join(" | "));
+  check("each finding's site is inside its own body part", /arm|elbow|upper limb/i.test(mi[0].site) && /hand/i.test(mi[1].site) && /head/i.test(mi[2].site), mi.map((x) => x.site).join(" | "));
   check("a time word said once is shared", mi.every((x) => x.dur === 1));
   await page.click("#add-all");
   check("add all puts the three findings in the list", (await page.evaluate(() => window.__penpad.chart.length)) === 3 && !(await page.$("#multi-note")));
@@ -244,6 +244,39 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.waitForFunction(() => window.__penpad.cand && window.__penpad.cand.part && window.__penpad.finding, null, { timeout: 90000 });
   const handSite = await page.evaluate(() => window.__penpad.finding.site && window.__penpad.finding.site.en);
   check("'ont i handen' finds a finding whose site is in the hand", /hand/i.test(handSite || ""), String(handSite));
+
+  // 6h. English regression table: typed English phrases must give the right finding, side, severity and time
+  await page.click('.segbtn:has-text("EN")');
+  const enTable = [
+    ["my left thumb hurts since yesterday", { finding: "Pain in thumb", lat: "7771000", days: 1 }],
+    ["severe headache for three days, throbbing", { finding: "Headache", sev: "24484000", days: 3 }],
+    ["stomach ache", { finding: "Stomach ache" }],
+    ["pain in the right knee for 2 weeks, mild", { finding: "Pain of knee region", lat: "24028007", sev: "255604002" }],
+    ["swollen right ankle, firm, since last week", { finding: "Swollen ankle region", lat: "24028007", days: 7 }],
+    ["pain in the medial side of the left knee", { finding: "Pain of knee region", lat: "7771000", aspect: "255561001" }],
+  ];
+  const enFail = [];
+  // the local snapshot holds only the main name of each concept (no synonyms), so three of these phrases need the live terminology server
+  const needsSynonyms = new Set(["stomach ache", "pain in the right knee for 2 weeks, mild", "pain in the medial side of the left knee"]);
+  const isClient = (await page.evaluate(() => window.__penpad.source)) === "client";
+  for (const [text, want] of enTable) {
+    if (!isClient && needsSynonyms.has(text)) continue;
+    await page.fill("#text", text);
+    await page.click("#go");
+    try { await page.waitForFunction((w) => window.__penpad.finding && window.__penpad.finding.en === w && window.__penpad.cand && window.__penpad.cand.query, want.finding, { timeout: 60000 }); }
+    catch (_) { enFail.push(`${text} -> ${await page.evaluate(() => window.__penpad.finding && window.__penpad.finding.en)}`); continue; }
+    await page.waitForTimeout(300);
+    const got = await page.evaluate(() => ({ ...window.__penpad.values, days: window.__penpad.duration && window.__penpad.duration.n }));
+    for (const [k, v] of Object.entries({ laterality: want.lat, severity: want.sev, aspect: want.aspect, days: want.days })) if (v !== undefined && got[k] !== v) enFail.push(`${text}: ${k} ${got[k]} != ${v}`);
+  }
+  check("English phrases give the right finding, side, severity, aspect and time", enFail.length === 0, enFail.join(" | "));
+  await page.fill("#text", "pain in the left arm and right leg");
+  await page.click("#go");
+  await page.waitForFunction(() => window.__penpad.multi && window.__penpad.multi.items.length === 2 && window.__penpad.multi.items.every((i) => i.status !== "resolving"), null, { timeout: 90000 });
+  const enMulti = await page.evaluate(() => window.__penpad.multi.items.map((i) => ({ status: i.status, f: i.entry && i.entry.finding.en, lat: i.entry && i.entry.values.laterality })));
+  check("English: left arm and right leg are two findings, each in its own limb", enMulti.every((x) => x.status === "ok") && /left arm|upper arm|arm/i.test(enMulti[0].f) && /lower limb|leg/i.test(enMulti[1].f) && enMulti[1].lat === "24028007", JSON.stringify(enMulti));
+  await page.click('.segbtn:has-text("SV")');
+  await page.fill("#text", "");
 
   // 7. another sample: swelling of the right foot (hard)
   await page.click('.chip:has-text("svullen höger fot")');

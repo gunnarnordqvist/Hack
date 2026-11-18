@@ -86,7 +86,7 @@ export function sentence(state, ctx) {
   const head = [cap(ft)];
   if (v.laterality) {
     const s = T(v.laterality);
-    if (!ft.toLowerCase().includes(s.toLowerCase())) head.push(s);
+    if (!ft.toLowerCase().includes(s.toLowerCase())) head.push(lower(s));
   }
   if (v.aspect && f.site) head.push(lower(strip(T(v.aspect), lang)));
   let first = head.join(", ");

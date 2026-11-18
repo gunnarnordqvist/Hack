@@ -13,7 +13,9 @@ Format: Keep a Changelog. No release has been tagged; tagging v0.1.0 is left to 
 - Aspect of a site (anterior, posterior, medial, lateral, proximal, distal), the body's counterpart of a tooth surface.
 - A list of several findings with outputs for the whole list (expressions, one COMPOSITION, a FHIR Bundle) and marks on the body.
 - Several findings from one sentence, each with its own body part and values and checked to lie inside that body part.
+- English check (tests/audit-en.cjs, tests/i18n.test.mjs); whole arm and leg as body parts; "last week/month" as time words.
 ### Fixed
 - Findings about the opposite side are no longer listed; English UI no longer shows Swedish suggestions.
 - English search: filler words dropped, synonyms and the server's order used in ranking; everyday pain words (hurts, ont) find the pain concept.
+- English: "stomach ache" gave a quadrant pain, "right leg" found nothing, "since last week" gave no time, and a side was written with a capital letter mid-sentence; a right-sided finding can no longer be offered "left" findings.
 - Site build omitted a new module; the build now copies all web files and is tested.

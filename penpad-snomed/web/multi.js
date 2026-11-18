@@ -22,8 +22,8 @@ export function splitClauses(text) {
 /** Body words from the configuration, longest first: [{word, regions, compound}]. */
 export function bodyTable(cfg) {
   const rows = [];
-  for (const w of cfg.bodymap.words || []) for (const word of [...w.sv, ...w.en]) rows.push({ word: word.toLowerCase(), regions: w.regions, compound: false, base: [w.sv[0], w.en[0]] });
-  for (const c of cfg.bodymap.compounds || []) rows.push({ word: c.word.toLowerCase(), regions: c.regions, compound: true, base: [] });
+  for (const w of cfg.bodymap.words || []) for (const [lang, list] of [["sv", w.sv], ["en", w.en]]) for (const word of list) rows.push({ word: word.toLowerCase(), regions: w.regions, compound: false, base: [w.sv[0], w.en[0]], lang });
+  for (const c of cfg.bodymap.compounds || []) rows.push({ word: c.word.toLowerCase(), regions: c.regions, compound: true, base: [], lang: c.lang });
   rows.sort((a, b) => b.word.length - a.word.length);
   return rows;
 }
@@ -70,14 +70,14 @@ export function parseMulti(text, cfg, labels, phrases) {
     const bw = findBodyWord(rest, table);
     const own = { values: { ...ex.values }, duration: ex.duration };
     if (bw && bw.compound) {
-      entries.push({ clause, regions: bw.regions, bodyWord: bw.word, base: bw.base, query: rest, ...own });
+      entries.push({ clause, regions: bw.regions, bodyWord: bw.word, base: bw.base, lang: bw.lang, query: rest, ...own });
       template = null;
     } else if (bw) {
       const others = meaningful(withoutWord(rest, bw.word));
       if (!others.length && template) {
-        entries.push({ clause, regions: bw.regions, bodyWord: bw.word, base: bw.base, query: template.replace("§", bw.word), ...own });
+        entries.push({ clause, regions: bw.regions, bodyWord: bw.word, base: bw.base, lang: bw.lang, query: template.replace("§", bw.word), ...own });
       } else {
-        entries.push({ clause, regions: bw.regions, bodyWord: bw.word, base: bw.base, query: rest, ...own });
+        entries.push({ clause, regions: bw.regions, bodyWord: bw.word, base: bw.base, lang: bw.lang, query: rest, ...own });
         if (others.length) template = rest.replace(new RegExp(`(?<![${L}])${esc(bw.word)}(?![${L}])`, "iu"), "§");
       }
     } else if (!entries.length) {

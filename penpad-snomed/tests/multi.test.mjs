@@ -27,7 +27,7 @@ test("after a fall: arm, hand and head become three findings, each with its own 
   const sv = parse("ont i armen, handen och huvudet");
   assert.equal(sv.multi, true);
   assert.deepEqual(sv.entries.map((e) => e.query), ["ont i armen", "ont i handen", "huvudvärk"]); // "ont i huvudet" has a finding of its own
-  assert.deepEqual(sv.entries.map((e) => e.regions[0]), ["upperarm", "hand", "head"]);
+  assert.deepEqual(sv.entries.map((e) => e.regions[0]), ["arm", "hand", "head"]);
   const en = parse("pain in the arm, hand and head");
   assert.deepEqual(en.entries.map((e) => e.query), ["pain in the arm", "pain in the hand", "headache"]);
 });
@@ -54,7 +54,7 @@ test("time words said once are shared, a side is never shared", () => {
 
 test("a compound word is a whole finding of its own", () => {
   const r = parse("ont i armen och huvudvärk");
-  assert.deepEqual(summary(r), ["ont i armen|upperarm+forearm+elbow", "huvudvärk|head"]);
+  assert.deepEqual(summary(r), ["ont i armen|arm", "huvudvärk|head"]);
   const e = parse("swollen foot and pain in the knee");
   assert.deepEqual(e.entries.map((x) => x.regions[0]), ["foot", "knee"]);
 });
@@ -81,4 +81,14 @@ test("an everyday phrase with a finding of its own becomes that finding's word",
   const r = parse("ont i armen, handen och huvudet");
   assert.equal(r.entries[2].query, "huvudvärk");
   assert.deepEqual(r.entries[2].regions, ["head"]);
+});
+
+test("the whole arm and the whole leg are body parts of their own (upper and lower limb)", () => {
+  const r = parse("pain in the left arm and right leg");
+  assert.deepEqual(r.entries.map((e) => e.regions), [["arm"], ["leg"]]);
+  assert.deepEqual(r.entries.map((e) => e.values.laterality), ["7771000", "24028007"]);
+});
+
+test("every entry knows the language of its body word", () => {
+  assert.equal(parse("stomach ache and ont i handen").entries.map((e) => e.lang).join(), "en,sv");
 });
