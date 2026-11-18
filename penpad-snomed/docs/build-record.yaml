@@ -22,13 +22,13 @@ gates:
 deviations:
   - "Assistant pushed to main and edited the workflow (default mandate forbids); owner allowed it in conversation; recorded as waiver W1, needs countersign."
   - "Tests and eval labels were written by the same assistant that built the code (not an independent oracle)."
-  - "Commit 18b5abf contains files with SNOMED terms (tests/fixtures/labels.json original version, docs/eval-candidates.json); history not rewritten, owner decision pending."
+  - "Two early commits held files with SNOMED terms (docs/eval-candidates.json, the first tests/fixtures/labels.json). On 2026-11-18 the owner approved a history rewrite: both files were removed from all commits on main and the dev branch and force-pushed; the neutral labels.json was re-added. Old commits may stay reachable on GitHub until GitHub support purges them, and in any clones made before; a backup bundle was kept outside the repository."
   - "Pinned action SHAs obtained from git ls-remote; unverified until a run passes."
   - "Tier-proportionality table and chapters 5, 6, 9, 17, 22 of the book were not read when this record was made."
   - "make_artifact.py and the private artifact are stale."
 
 ai_review:
-  - {date: 2026-11-18, by: "fresh AI subagent, given the code only", approval: false, findings_fixed: "guard bypass (separators, dashes, full-width digits, phone, spelled-out e-mail), Google Fonts removed, CI permissions scoped per job, persist-credentials false, spec R6 method corrected", findings_open: "SNOMED terms in git history (owner decision); guard cannot detect names or addresses; spec check proves test existence, not that a test exercises the rule; e2e not in CI; clientCandidates untested in unit tests"}
+  - {date: 2026-11-18, by: "fresh AI subagent, given the code only", approval: false, findings_fixed: "guard bypass (separators, dashes, full-width digits, phone, spelled-out e-mail), Google Fonts removed, CI permissions scoped per job, persist-credentials false, spec R6 method corrected", findings_open: "guard cannot detect names or addresses; spec check proves test existence, not that a test exercises the rule; e2e not in CI; clientCandidates untested in unit tests"}
 
 needs_a_human:
   - "Independent oracle author (a person who has not seen the code)"
