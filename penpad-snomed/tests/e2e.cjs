@@ -181,6 +181,21 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.click('.segbtn:has-text("Fram")');
   await page.click(".loc button").catch(() => {});
 
+  // 6e. the aspect of a site (the body's counterpart of a tooth surface): chosen next to the map, and read from typed text
+  await page.click('.bm .part[data-region="knee"][data-side="right"] path >> nth=0');
+  await page.click('[data-aspect="255561001"]');
+  await page.waitForSelector(".mapitem", { timeout: 60000 });
+  await page.click(".mapitem >> nth=0");
+  await page.waitForFunction(() => window.__penpad.finding && window.__penpad.finding.site, null, { timeout: 60000 });
+  check("aspect chosen next to the map becomes the aspect of the finding", (await page.evaluate(() => window.__penpad.values.aspect)) === "255561001");
+  check("the form shows the aspect slot", (await page.$$('[data-slot="aspect"]')).length === 1);
+  await page.click("#bm-back");
+  await page.click(".loc button").catch(() => {});
+  await page.fill("#text", "smärta i höger knä, lateral");
+  await page.click("#go");
+  await page.waitForFunction(() => window.__penpad.cand && window.__penpad.cand.query === "smärta i knä" && window.__penpad.finding, null, { timeout: 60000 });
+  check("typed 'lateral' fills the aspect", (await page.evaluate(() => window.__penpad.values.aspect)) === "49370004");
+
   // 7. another sample: swelling of the right foot (hard)
   await page.click('.chip:has-text("svullen höger fot")');
   await page.waitForFunction(() => window.__penpad.finding && window.__penpad.finding.topic === "swelling", null, { timeout: 60000 });

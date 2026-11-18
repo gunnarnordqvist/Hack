@@ -21,15 +21,15 @@ rules:
     error_case: "Missing names never raise."
     tests: ["a concept without an English term does not break the ranking", "ties are broken by the shorter name, using whichever name exists"]
   - id: R4
-    rule: "Laterality is offered only when the finding site is lateralizable; otherwise it is ignored."
+    rule: "Laterality is offered only when the finding site is lateralizable; otherwise it is ignored. An aspect of the site (anterior, posterior, medial, lateral, proximal, distal; SNOMED CT qualifier values) is offered for any finding with a site; it is shown in the sentence and as a FHIR extension, kept as a comment in the SNOMED expression (the model has no attribute for it) and reported as unmapped in openEHR."
     example: {given: "thumb finding", then: "left/right is asked for"}
     error_case: "Non-lateralizable site: laterality ignored."
-    tests: ["laterality is ignored when the body site is not lateralizable", "laterality block shown for lateralizable site", "test_detail_gives_lateralizable_site_for_thumb"]
+    tests: ["laterality is ignored when the body site is not lateralizable", "laterality block shown for lateralizable site", "test_detail_gives_lateralizable_site_for_thumb", "aspect words fill the aspect, in both languages", "aspect chosen next to the map becomes the aspect of the finding", "the form shows the aspect slot", "typed 'lateral' fills the aspect"]
   - id: R5
     rule: "Outputs: sentence (sv/en, clinician/patient), SNOMED expression, openEHR COMPOSITION, FHIR Condition. Terms missing in Swedish are shown in English and reported."
     example: {given: "a chosen finding with right side and severity", then: "all four outputs carry the same codes"}
     error_case: "Unmapped terms are listed, not invented."
-    tests: ["clinician sentence, Swedish", "clinician sentence, English", "patient sentence, Swedish and English", "SNOMED expression", "openEHR composition carries SNOMED codes and the archetype nodes", "FHIR Condition", "codesUsed lists finding, site and every chosen value", "ISO 8601 durations", "a term missing in the Swedish module is shown in English and reported"]
+    tests: ["clinician sentence, Swedish", "clinician sentence, English", "patient sentence, Swedish and English", "SNOMED expression", "openEHR composition carries SNOMED codes and the archetype nodes", "FHIR Condition", "codesUsed lists finding, site and every chosen value", "an aspect of the site (front side, toward the middle ...) is in the sentence, kept as a comment in the expression, listed as unmapped in openEHR and an extension in FHIR", "an aspect without a body site is ignored", "ISO 8601 durations", "a term missing in the Swedish module is shown in English and reported"]
   - id: R6
     rule: "Codes are validated against the server; a code with non-digits is refused by the local server."
     example: {given: "GET /api/validate?code= with a valid id", then: "result from server"}

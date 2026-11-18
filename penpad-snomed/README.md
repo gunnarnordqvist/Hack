@@ -72,7 +72,7 @@ All of this was run, see `tests/`.
   Server: HL7 Nordics `tx-nordics.fhir.org`, SNOMED CT International 20260801, Swedish module 20260531.
 - **Swedish terms are real SNOMED CT** (Swedish module via `displayLanguage=sv`), not translations of ours. Where the module has
   no term the English term is shown and the UI says so.
-- **Tests:** 41 JavaScript (`node --test tests/*.test.mjs`), 28 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 40
+- **Tests:** 44 JavaScript (`node --test tests/*.test.mjs`), 28 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 43
   browser checks run in **each of the modes** (`node tests/e2e.cjs <url> <dir>`, needs Playwright; set `HTTPS_PROXY` if
   outbound HTTPS needs a proxy). The unit tests use neutral fixture labels in our own words, not SNOMED terms.
 - **Candidate finder, own check on 14 phrases** (`backend/eval_candidates.py`, **our own labels, not a benchmark**; the
@@ -102,6 +102,8 @@ fingers from the same figure; the geometry decides which path is the thumb), leg
 back, and a **cross-section of the head and neck** (nose, mouth, teeth, tongue, throat, larynx) that is **drawn for this project
 from scratch** (`web/headsection.js`, simple shapes, not traced from anything). The leg and back boxes are measured by
 `tools/build_zoom_boxes.py`. Chest, abdomen and arms have no close-up.
+
+**Aspect of a site (the body's counterpart of a tooth surface).** In dentistry a finding is placed on a tooth *and* a surface (mesial, distal ...). The same method is used for the whole body: after the site (and side), the **aspect** can be chosen: anterior, posterior, medial, lateral, proximal, distal (SNOMED CT qualifier values, checked against the server; superior and inferior under *more*). It is chosen next to the map or in the form, or read from typed text ("lateral", "medialt"). It appears in the sentence and as a FHIR extension. In the SNOMED expression it is kept as a comment, because the SNOMED CT model has no attribute to attach it to, and the openEHR mapping we follow has no node for it, so it is listed as unmapped. Some body parts also have ready-made aspect concepts (e.g. *anterior aspect of knee*); using those is not done yet.
 30 regions are defined in `backend/topics.json` (`bodymap`). Findings with a non-regional site (skin, muscle, nerve ...) are
 reached by text or the search box.
 

@@ -63,7 +63,7 @@ export function sentence(state, ctx) {
     let head;
     if (f.site) {
       const site = (side && !/^(båda|both)/i.test(side) && f.site.lateralizable !== false ? side + " " : "") + sitePlain(f.site, lang);
-      head = topic.patient[lang].have.replace("{site}", site);
+      head = topic.patient[lang].have.replace("{site}", site + (v.aspect ? " (" + lower(strip(T(v.aspect), lang)) + ")" : ""));
     } else {
       head = (sv ? "Du har " : "You have ") + lower(findingTerm(f, lang, fb));
     }
@@ -88,6 +88,7 @@ export function sentence(state, ctx) {
     const s = T(v.laterality);
     if (!ft.toLowerCase().includes(s.toLowerCase())) head.push(s);
   }
+  if (v.aspect && f.site) head.push(lower(strip(T(v.aspect), lang)));
   let first = head.join(", ");
   if (duration) first += (sv ? ", sedan " : ", for ") + duration.n + " " + unitWord(cfg, duration.unit, duration.n, lang);
   out.push(first + ".");
@@ -125,7 +126,9 @@ export function expression(state, ctx) {
   if (v.severity) refinements.push(`${a.severity} |Severity| = ${ex(v.severity, labels)}`);
   if (v.onset) refinements.push(`${a.clinicalCourse} |Clinical course| = ${ex(v.onset, labels)}`);
   const focus = `${f.code} |${f.en}|`;
-  return refinements.length ? `${focus} :\n  ${refinements.join(",\n  ")}` : focus;
+  const body = refinements.length ? `${focus} :\n  ${refinements.join(",\n  ")}` : focus;
+  // the SNOMED CT model has no attribute for an aspect of a body structure, so it is kept as a comment and not claimed as part of the meaning
+  return v.aspect && f.site ? `${body}\n/* aspect of the site: ${ex(v.aspect, labels)} (no attribute for it in the SNOMED CT model; not part of the expression) */` : body;
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -181,7 +184,10 @@ export function openEhr(state, ctx, opts = {}) {
       if (local && f.site.lateralizable) loc.push(element(OE.location.laterality, "Laterality", coded(T(v.laterality), "local", local, v.laterality)));
       else unmapped.push({ key: "laterality", reason: local ? "body site is not lateralizable" : "the archetype has local codes for left and right only" });
     }
+    if (v.aspect) unmapped.push({ key: "aspect", reason: "the anatomical location mapping we follow has no node for an aspect (anterior, medial ...)" });
     items.push(cluster(OE.location.archetype, "Anatomical location", loc));
+  } else if (v.aspect) {
+    unmapped.push({ key: "aspect", reason: "no body site on this finding, so no anatomical location cluster" });
   } else if (v.laterality) {
     unmapped.push({ key: "laterality", reason: "no body site on this finding, so no anatomical location cluster" });
   }
@@ -258,7 +264,7 @@ export function fhirCondition(state, ctx, opts = {}) {
   if (bodySite.length) r.bodySite = bodySite;
   if (state.duration) r.onsetString = `${state.duration.n} ${unitWord(ctx.cfg, state.duration.unit, state.duration.n, "en")} ago (duration entered, no date)`;
   const ext = [];
-  for (const slot of ["onset", "pattern", "progress", "character", "consistency"]) {
+  for (const slot of ["onset", "pattern", "progress", "character", "consistency", "aspect"]) {
     if (v[slot]) ext.push({ url: EXT + slot, valueCodeableConcept: cc(v[slot], labels, lang) });
   }
   if (ext.length) r.extension = ext;

@@ -50,3 +50,9 @@ test("a number word without a unit is not a duration", () => {
   const r = run("en tumme");
   assert.equal(r.duration, null);
 });
+
+test("aspect words fill the aspect, in both languages", () => {
+  assert.equal(run("smärta på insidan av höger knä, mediala").values.aspect, "255561001");
+  assert.equal(run("pain in the left knee, lateral").values.aspect, "49370004");
+  assert.equal(run("pain in the knee").values.aspect, undefined);
+});

@@ -258,7 +258,7 @@ async function interpret() {
 function visibleSlots(f) {
   if (!f) return [];
   const topic = S.snap.cfg.topics.find((x) => x.id === f.topic) || S.snap.cfg.topics[0];
-  return topic.slots.filter((s) => s !== "laterality" || (f.site && f.site.lateralizable));
+  return topic.slots.filter((s) => (s !== "laterality" || (f.site && f.site.lateralizable)) && (s !== "aspect" || f.site));
 }
 
 /** Body regions of a finding site, most specific first (asked of the server: the site's ancestors). */
@@ -297,6 +297,8 @@ async function selectFinding(code, fromText, fromMap) {
   if (sel && sel.side && vis.has("laterality") && (fromMap || !S.values.laterality)) {
     S.values.laterality = CODE_OF_SIDE[sel.side]; S.prefilled.add("laterality"); S.prefilledMap.add("laterality");
   }
+  // an aspect chosen next to the map (anterior, medial ...) is explicit too
+  if (sel && sel.aspect && vis.has("aspect")) { S.values.aspect = sel.aspect; S.prefilled.add("aspect"); S.prefilledMap.add("aspect"); }
   focusMapOn(S.finding);
   S.confirmed = false;
   render();
@@ -433,6 +435,19 @@ function onRegion(region, side) {
   renderMap();
 }
 
+const aspectName = (c) => { const L = S.snap.labels[c]; return (L && (S.lang === "sv" ? L.sv || L.en : L.en)) || c; };
+
+function chooseAspect(c) {
+  const M = S.map;
+  M.sel.aspect = M.sel.aspect === c ? null : c;
+  if (S.finding && visibleSlots(S.finding).includes("aspect")) {
+    if (M.sel.aspect) { S.values.aspect = M.sel.aspect; S.prefilled.add("aspect"); S.prefilledMap.add("aspect"); }
+    else { delete S.values.aspect; S.prefilled.delete("aspect"); S.prefilledMap.delete("aspect"); }
+    render();
+    if (liveCheck()) validateAll();
+  } else renderMap();
+}
+
 function mapFindings() {
   const M = S.map;
   if (!M.sel) return null;
@@ -469,11 +484,16 @@ function renderMap() {
   const info = regionInfo(M.sel.region);
   const subs = S.snap.cfg.bodymap.subregions[M.sel.region] || [];
   if (info?.parent || subs.length) {
-    const go = (r) => () => { M.sel = { region: r, side: M.sel.side }; M.more = false; renderMap(); };
+    const go = (r) => () => { M.sel = { region: r, side: M.sel.side, aspect: M.sel.aspect }; M.more = false; renderMap(); };
     box.append(h("div", { class: "subs" }, h("span", { class: "seglabel" }, t("subs")),
       info?.parent ? h("button", { type: "button", class: "chip", "data-sub": info.parent, onclick: go(info.parent) }, "↑ " + regionLabel(info.parent)) : null,
       subs.map((r) => h("button", { type: "button", class: "chip", "data-sub": r, onclick: go(r) }, regionLabel(r)))));
   }
+  // the aspect of the chosen site (the body's counterpart of a tooth surface): anterior, posterior, medial, lateral, proximal, distal
+  const aspects = S.snap.cfg.slots.aspect.quick;
+  box.append(h("div", { class: "subs" }, h("span", { class: "seglabel" }, S.snap.cfg.slots.aspect.label[S.lang]),
+    aspects.map((c) => h("button", { type: "button", class: "chip" + (M.sel.aspect === c ? " on" : ""), "data-aspect": c, "aria-pressed": M.sel.aspect === c ? "true" : "false",
+      onclick: () => chooseAspect(c) }, aspectName(c)))));
   box.append(seg("", [["all", t("all")], ...S.snap.cfg.topics.map((x) => [x.id, x.label[S.lang]])], M.topic, (v) => { M.topic = v; M.more = false; renderMap(); }));
   if (S.source === "client" && !S.snap.bodymap.findings[M.sel.region]) {
     const want = M.sel.region;

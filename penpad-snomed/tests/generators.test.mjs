@@ -89,3 +89,23 @@ test("ISO 8601 durations", () => {
   assert.equal(isoDuration(30, "minute"), "PT30M");
   assert.equal(isoDuration(1, "year"), "P1Y");
 });
+
+test("an aspect of the site (front side, toward the middle ...) is in the sentence, kept as a comment in the expression, listed as unmapped in openEHR and an extension in FHIR", () => {
+  const s = thumbState({ values: { laterality: "7771000", aspect: "255561001" } });
+  assert.match(sentence(s, ctx).text, /^Tumvärk, vänster, mot mitten, sedan 2 dagar\./);
+  assert.match(sentence({ ...s, lang: "en", mode: "patient" }, ctx).text, /^You have pain in your left thumb \(toward the middle\) for 2 days\./);
+  const e = expression(s, ctx);
+  assert.match(e, /\/\* aspect of the site: 255561001 \|toward the middle\| .*not part of the expression\) \*\//);
+  assert.doesNotMatch(e.split("/*")[0], /255561001/);
+  assert.ok(openEhr(s, ctx, { time: T }).unmapped.some((u) => u.key === "aspect"));
+  const f = fhirCondition(s, ctx, { time: T });
+  assert.ok(f.extension.some((x) => x.url.endsWith("/aspect") && x.valueCodeableConcept.coding[0].code === "255561001"));
+  assert.ok(codesUsed(s, ctx).some((r) => r.code === "255561001" && r.role === "aspect"));
+});
+
+test("an aspect without a body site is ignored", () => {
+  const s = thumbState({ values: { aspect: "255549009" } });
+  s.finding.site = null;
+  assert.doesNotMatch(sentence(s, ctx).text, /framsidan/);
+  assert.doesNotMatch(expression(s, ctx), /aspect/);
+});
