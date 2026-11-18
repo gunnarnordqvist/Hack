@@ -94,13 +94,34 @@ class BodyMapConfig(unittest.TestCase):
         ids = [r["id"] for r in bm["regions"]]
         self.assertEqual(len(ids), len(set(ids)))
         for r in bm["regions"]:
-            self.assertTrue(r["codes"] and all(c.isdigit() for c in r["codes"]), r["id"])
+            if r.get("general"):  # "whole body": no body structure, the findings of a general topic
+                self.assertEqual(r["codes"], [], r["id"])
+                self.assertIn(r["general"], [t["id"] for t in CFG["topics"]], r["id"])
+            else:
+                self.assertTrue(r["codes"] and all(c.isdigit() for c in r["codes"]), r["id"])
             if r["parent"]:
                 self.assertIn(r["parent"], ids, f"{r['id']} parent")
         for parent, regs in bm["subregions"].items():
             self.assertIn(parent, ids)
             for r in regs:
                 self.assertIn(r, ids, f"subregion of {parent}")
+
+    def test_every_body_word_and_alias_points_at_a_real_region(self):
+        bm = CFG["bodymap"]
+        ids = {r["id"] for r in bm["regions"]}
+        compounds = {c["word"] for c in bm["compounds"]}
+        for w in bm["words"] + bm["compounds"]:
+            self.assertTrue(w["regions"] and set(w["regions"]) <= ids, w)
+        for a in bm["aliases"]:
+            self.assertIn(a["query"], compounds, a)
+
+    def test_every_topic_has_what_the_sentences_need(self):
+        for t in CFG["topics"]:
+            for lang in ("sv", "en"):
+                self.assertIn("explain", t["patient"][lang], t["id"])
+                self.assertIn(t["id"], CFG["patientPhrases"][lang]["lead"], t["id"])
+            if t.get("headline"):
+                self.assertTrue(all(c.isdigit() for c in t["headline"]))
 
     def test_snapshot_maps_thumb_pain_to_the_thumb(self):
         f = HERE.parent / "web" / "data" / "snapshot.json"

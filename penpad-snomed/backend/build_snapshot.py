@@ -88,15 +88,19 @@ def universe_details(tx: Tx, cfg: dict, ranker: Ranker) -> dict:
     return out, sorted(versions)
 
 
-def bodymap_data(tx: Tx, cfg: dict, details: dict) -> dict:
+def bodymap_data(tx: Tx, cfg: dict, details: dict, universe=None) -> dict:
     """Which findings belong to which body region (SNOMED is-a on the finding site) and the most specific
     region of every finding site. Regions are expanded in full (some are large)."""
     regions = cfg["bodymap"]["regions"]
     sets = {}
     for r in regions:
-        ecl = " OR ".join(f"<< {c}" for c in r["codes"])
-        sets[r["id"]] = {c["code"] for c in tx.expand_all(ecl, limit=60000)}
+        # a region without codes ("whole body") has no site: its findings are those of its general topic
+        sets[r["id"]] = {c["code"] for c in tx.expand_all(" OR ".join(f"<< {c}" for c in r["codes"]), limit=60000)} if r["codes"] else set()
     findings = {r["id"]: sorted(code for code, site in details.items() if site and site["code"] in sets[r["id"]]) for r in regions}
+    for r in regions:
+        if r.get("general") and universe:
+            head = next((t.get("headline") for t in cfg["topics"] if t["id"] == r["general"]), None)
+            findings[r["id"]] = sorted(c["code"] for c in universe.values() if c["topic"] == r["general"] and (not head or c["code"] in head))
     order = sorted(regions, key=lambda r: len(sets[r["id"]]))
     sites = {s["code"] for s in details.values() if s}
     site_regions = {site: [r["id"] for r in order if site in sets[r["id"]]] for site in sites}
@@ -127,7 +131,7 @@ def main():
     with_site = sum(1 for v in details.values() if v)
     print(f"details: {with_site}/{len(details)} concepts have a finding site")
 
-    bm = bodymap_data(tx, cfg, details)
+    bm = bodymap_data(tx, cfg, details, ranker.universe)
     print("body map:", {r["id"]: r["count"] for r in bm["regions"]})
     # free-text reader runs in node so the samples go through the exact browser code
     lab_file = ROOT / "cache" / "labels-for-extract.json"

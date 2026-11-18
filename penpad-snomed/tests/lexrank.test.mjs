@@ -41,3 +41,14 @@ test("everyday pain words become the word the terms use", async () => {
   assert.equal(normalizeSymptoms("halsont"), "halsont");
   assert.equal(normalizeSymptoms("huvudvärk"), "huvudvärk");
 });
+
+test("a pain suggestion that adds 'pain' to words that name neither pain nor swelling is noticed", async () => {
+  const { addsTopicWord } = await import("../web/lexrank.js");
+  assert.equal(addsTopicWord("toenail fungus", ["Pain in toe", "smärta i tå"]), true);
+  assert.equal(addsTopicWord("my leg is numb", ["Pain in lower limb"]), true);
+  assert.equal(addsTopicWord("pain in the knee", ["Pain of knee region"]), false);
+  assert.equal(addsTopicWord("my thumb hurts", ["Pain in thumb"]), false); // "hurts" means pain
+  assert.equal(addsTopicWord("headache", ["Headache"]), false);
+  assert.equal(addsTopicWord("sore throat", ["Sore throat"]), false);
+  assert.equal(addsTopicWord("ont i magen", ["ont i magen"]), false);
+});

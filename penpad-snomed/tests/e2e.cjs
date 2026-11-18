@@ -142,11 +142,12 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   // every English example must lead to a finding (one was found to say "No confident match")
   const failedExamples = [];
   for (let i = 0; i < chipCount; i++) {
-    await page.evaluate(() => { window.__penpad.finding = null; });
+    await page.evaluate(() => { window.__penpad.finding = null; window.__penpad.multi = null; });
     const chip = (await page.$$("#samples .chip"))[i];
     const label = await chip.textContent();
     await chip.click();
-    try { await page.waitForFunction(() => window.__penpad.finding, null, { timeout: 60000 }); } catch (_) { failedExamples.push(label); }
+    // a finding, or (for an example with several findings) every part found
+    try { await page.waitForFunction(() => window.__penpad.finding || (window.__penpad.multi && window.__penpad.multi.items.length > 1 && window.__penpad.multi.items.every((x) => x.status === "ok")), null, { timeout: 60000 }); } catch (_) { failedExamples.push(label); }
   }
   check("English UI: every example gives a finding", failedExamples.length === 0, failedExamples.join(" | "));
   await page.click('.bm .part[data-region="knee"][data-side="right"] path >> nth=0');
@@ -192,9 +193,20 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.click("#bm-back");
   await page.click(".loc button").catch(() => {});
   await page.fill("#text", "smärta i höger knä, lateral");
+  await page.evaluate(() => { window.__penpad.cand = null; window.__penpad.finding = null; }); // so the wait below cannot see the old state
   await page.click("#go");
   await page.waitForFunction(() => window.__penpad.cand && window.__penpad.cand.query === "smärta i knä" && window.__penpad.finding, null, { timeout: 60000 });
-  check("typed 'lateral' fills the aspect", (await page.evaluate(() => window.__penpad.values.aspect)) === "49370004");
+  const latVals = await page.evaluate(() => JSON.stringify({ v: window.__penpad.values, f: window.__penpad.finding && window.__penpad.finding.en, sel: window.__penpad.map.sel }));
+  check("typed 'lateral' fills the aspect", (await page.evaluate(() => window.__penpad.values.aspect)) === "49370004", latVals);
+
+  // 6d2. general symptoms: "whole body" lists findings that have no body part (fever, cough, ...)
+  if (await page.$("#bm-back")) await page.click("#bm-back");
+  await page.click(".loc button").catch(() => {});
+  await page.click("#bm-whole");
+  await page.waitForSelector(".mapitem", { timeout: 60000 });
+  const wholeNames = await page.$$eval(".mapitem span:first-child", (n) => n.map((x) => x.textContent.toLowerCase()));
+  check("whole body lists general findings such as fever", wholeNames.length > 0 && wholeNames.some((x) => /feber|fever/.test(x)), wholeNames.slice(0, 4).join(" | "));
+  await page.click(".loc button").catch(() => {});
 
   // 6f. several findings after a fall: forearm, hand and head go into one list; outputs cover the whole list
   if (await page.$("#bm-back")) await page.click("#bm-back");
@@ -270,6 +282,16 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
     for (const [k, v] of Object.entries({ laterality: want.lat, severity: want.sev, aspect: want.aspect, days: want.days })) if (v !== undefined && got[k] !== v) enFail.push(`${text}: ${k} ${got[k]} != ${v}`);
   }
   check("English phrases give the right finding, side, severity, aspect and time", enFail.length === 0, enFail.join(" | "));
+  // general symptoms in one sentence, and a body part that has no such finding
+  await page.fill("#text", "fever and cough for three days");
+  await page.click("#go");
+  await page.waitForFunction(() => window.__penpad.multi && window.__penpad.multi.items.length === 2 && window.__penpad.multi.items.every((i) => i.status !== "resolving"), null, { timeout: 90000 });
+  const genMulti = await page.evaluate(() => window.__penpad.multi.items.map((i) => ({ status: i.status, f: i.entry && i.entry.finding.en, days: i.entry && i.entry.duration && i.entry.duration.n })));
+  check("English: fever and cough are two general findings sharing the time", genMulti.every((x) => x.status === "ok" && x.days === 3) && /fever/i.test(genMulti[0].f) && /cough/i.test(genMulti[1].f), JSON.stringify(genMulti));
+  await page.fill("#text", "rash on both arms");
+  await page.click("#go");
+  await page.waitForSelector("#part-miss", { timeout: 90000 });
+  check("a finding with no match inside the named body part says so instead of guessing", (await page.$$("#cands .cand")).length === 0);
   await page.fill("#text", "pain in the left arm and right leg");
   await page.click("#go");
   await page.waitForFunction(() => window.__penpad.multi && window.__penpad.multi.items.length === 2 && window.__penpad.multi.items.every((i) => i.status !== "resolving"), null, { timeout: 90000 });

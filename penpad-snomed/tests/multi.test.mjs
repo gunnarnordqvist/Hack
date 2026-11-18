@@ -92,3 +92,27 @@ test("the whole arm and the whole leg are body parts of their own (upper and low
 test("every entry knows the language of its body word", () => {
   assert.equal(parse("stomach ache and ont i handen").entries.map((e) => e.lang).join(), "en,sv");
 });
+
+test("a later clause without a body word but with words of its own is a maybe-finding, not lost", () => {
+  const r = parse("feber och hosta sedan tre dagar");
+  assert.deepEqual(r.entries.map((e) => [e.query, !!e.optional]), [["feber", false], ["hosta", true]]);
+  assert.equal(r.hasOptional, true);
+  assert.equal(r.multi, false); // only the app can tell, by trying "hosta" against SNOMED CT
+  assert.ok(r.entries.every((e) => e.duration && e.duration.n === 3)); // a time word said once is shared
+  const en = parse("fever and cough for three days");
+  assert.deepEqual(en.entries.map((e) => e.query), ["fever", "cough"]);
+});
+
+test("filler such as 'sudden onset' is not a maybe-finding", () => {
+  for (const t of ["smärta i vänster tumme sedan två dagar, bultande, måttlig, plötslig debut, sämre", "pain in the knee, worse, sudden onset"]) {
+    const r = parse(t);
+    assert.equal(r.hasOptional, false, t);
+    assert.equal(r.entries.length, 1, t);
+  }
+});
+
+test("a body part followed by a plain quality word stays one finding", () => {
+  const r = parse("pain in the knee, worse in the morning");
+  assert.equal(r.entries.filter((e) => !e.optional).length, 1);
+  assert.equal(r.multi, false);
+});
