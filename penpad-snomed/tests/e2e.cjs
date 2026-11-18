@@ -87,6 +87,7 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   check("side from the map becomes laterality (right)", lat === "24028007", String(lat));
   check("tag says it came from the body map", (await page.textContent('[data-slot="laterality"] .tag')).includes("kroppskartan"));
   await page.screenshot({ path: path.join(out, "09-map-knee.png"), fullPage: true });
+  await page.click("#bm-back"); // the knee opened the leg close-up
   await page.click('.bm .part[data-region="hand"][data-side="left"] path >> nth=0');
   await page.waitForSelector('.bm .part[data-region="thumb"]');
   check("hand zoom shows thumb and four fingers", (await page.$$eval('.bm .part[data-region="fingers"] path', (n) => n.length)) === 4);
@@ -114,6 +115,7 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   check("back view lists back findings", (await page.$$eval(".mapitem", (n) => n.length)) > 0);
   await page.screenshot({ path: path.join(out, "11-map-back.png"), fullPage: true });
   await page.click(".loc button");
+  await page.click("#bm-back"); // the back opened its close-up
   await page.click('.segbtn:has-text("Fram")');
 
   // 6b2. personal data guard: a text with an identity number is refused and no request carries it
@@ -155,6 +157,30 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.click(".loc button");
   await page.click('.segbtn:has-text("SV")');
 
+  // 6d. close-ups: head and neck cross-section, leg, back (the hand close-up is checked earlier)
+  if (await page.$("#bm-back")) await page.click("#bm-back");
+  const partsOf = () => page.$$eval(".bm .part", (n) => n.map((x) => x.dataset.region + ":" + x.dataset.side));
+  await page.click('.bm .part[data-region="head"] path >> nth=0');
+  const headParts = (await partsOf()).map((x) => x.split(":")[0]);
+  check("head close-up: cross-section with nose, mouth, teeth, tongue, throat and larynx", ["head", "nose", "mouth", "teeth", "tongue", "throat", "larynx"].every((r) => headParts.includes(r)), headParts.join(","));
+  await page.click('.bm .part[data-region="tongue"] path >> nth=0');
+  await page.waitForSelector(".mapitem", { timeout: 60000 });
+  const tongueN = (await page.$$(".mapitem")).length;
+  check("tongue in the cross-section lists findings", tongueN > 0, `n=${tongueN}`);
+  await page.click("#bm-back");
+  await page.click('.bm .part[data-region="thigh"][data-side="left"] path >> nth=0');
+  const legParts = await partsOf();
+  check("leg close-up: thigh, knee, lower leg, ankle and foot, all on the left", legParts.length === 5 && legParts.every((x) => x.endsWith(":left")), legParts.join(","));
+  await page.waitForSelector(".mapitem", { timeout: 60000 });
+  await page.click("#bm-back");
+  await page.click('.segbtn:has-text("Bak")');
+  await page.click('.bm .part[data-region="buttock"][data-side="left"] path >> nth=0');
+  const backParts = (await partsOf()).map((x) => x.split(":")[0]);
+  check("back close-up: back and buttock", backParts.includes("back") && backParts.includes("buttock"), backParts.join(","));
+  await page.click("#bm-back");
+  await page.click('.segbtn:has-text("Fram")');
+  await page.click(".loc button").catch(() => {});
+
   // 7. another sample: swelling of the right foot (hard)
   await page.click('.chip:has-text("svullen höger fot")');
   await page.waitForFunction(() => window.__penpad.finding && window.__penpad.finding.topic === "swelling", null, { timeout: 60000 });
@@ -162,7 +188,7 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   check("swelling sample", /fot, höger, sedan 1 vecka\. Hård/i.test(sentence), sentence);
 
   // 8. low-confidence input shows a warning and a manual path
-  await page.fill("#text", (await page.evaluate(() => window.__penpad.source)) === "client" ? "qqzzxx" : "magont");
+  await page.fill("#text", "qqzzxx");
   await page.click("#go");
   await page.waitForSelector(".warn");
   const warn = await page.textContent(".warn");

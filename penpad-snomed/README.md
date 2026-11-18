@@ -13,7 +13,7 @@ the result as a plain sentence, a post-coordinated SNOMED CT expression, an open
 
 | Step | What happens here |
 |---|---|
-| **Target** | Free text (Swedish or English) is read for side, duration, severity and so on; the rest is matched to a finding. Or **point at the body**: a front and back figure (plus a hand close-up, as on the original demo's Topics tab) lists the findings for the chosen site, and the side you click becomes the patient's side. |
+| **Target** | Free text (Swedish or English) is read for side, duration, severity and so on; the rest is matched to a finding. Or **point at the body**: a front and back figure with close-ups (hand, leg, back, and a cross-section of the head and neck, in the spirit of the original demo's Topics tab) lists the findings for the chosen site, and the side you click becomes the patient's side. |
 | **Refine** | Options per question come from the terminology server as **ECL value sets**. Side is offered only for body structures in the SNOMED CT reference set *lateralizable body structure*. A short list of quick choices has a visible **"more…"** cue. |
 | **Validate** | A sentence generator writes the choices back ("Is this what you meant?"). Every code is checked against the server. |
 
@@ -72,7 +72,7 @@ All of this was run, see `tests/`.
   Server: HL7 Nordics `tx-nordics.fhir.org`, SNOMED CT International 20260801, Swedish module 20260531.
 - **Swedish terms are real SNOMED CT** (Swedish module via `displayLanguage=sv`), not translations of ours. Where the module has
   no term the English term is shown and the UI says so.
-- **Tests:** 38 JavaScript (`node --test tests/*.test.mjs`), 28 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 36
+- **Tests:** 41 JavaScript (`node --test tests/*.test.mjs`), 28 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 40
   browser checks run in **each of the modes** (`node tests/e2e.cjs <url> <dir>`, needs Playwright; set `HTTPS_PROXY` if
   outbound HTTPS needs a proxy). The unit tests use neutral fixture labels in our own words, not SNOMED terms.
 - **Candidate finder, own check on 14 phrases** (`backend/eval_candidates.py`, **our own labels, not a benchmark**; the
@@ -96,9 +96,13 @@ finding is listed for a region when its **finding site** is that structure or a 
 listed for thumb, hand and upper limb (client mode asks the server with an ECL attribute search).
 The chosen finding is highlighted on the body (amber), with the side taken from the laterality answer; pointing at the body
 (teal) and clicking a finding in the list sets laterality from the clicked side, and that explicit side wins over a side that
-was only in the typed text. Parts that are not drawn (eye, ear, nose, mouth, throat, elbow, wrist, toes) are reached by
-sub-area buttons. Hand close-up: palm, thumb and four fingers from the same figure; the geometry decides which path is the thumb.
-27 regions are defined in `backend/topics.json` (`bodymap`). Findings with a non-regional site (skin, muscle, nerve ...) are
+was only in the typed text. Parts that are not drawn (eye, ear, elbow, wrist, toes) are reached by
+sub-area buttons. Clicking a hand, a part of a leg, the head or neck, or the back/buttock opens a close-up: hand (palm, thumb and four
+fingers from the same figure; the geometry decides which path is the thumb), leg (thigh, knee, lower leg, ankle, foot, per side),
+back, and a **cross-section of the head and neck** (nose, mouth, teeth, tongue, throat, larynx) that is **drawn for this project
+from scratch** (`web/headsection.js`, simple shapes, not traced from anything). The leg and back boxes are measured by
+`tools/build_zoom_boxes.py`. Chest, abdomen and arms have no close-up.
+30 regions are defined in `backend/topics.json` (`bodymap`). Findings with a non-regional site (skin, muscle, nerve ...) are
 reached by text or the search box.
 
 ## Outputs

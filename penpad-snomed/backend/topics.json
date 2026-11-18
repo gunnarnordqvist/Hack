@@ -977,6 +977,42 @@
         ],
         "sided": true,
         "parent": "foot"
+      },
+      {
+        "id": "tongue",
+        "label": {
+          "sv": "Tunga",
+          "en": "Tongue"
+        },
+        "codes": [
+          "21974007"
+        ],
+        "sided": false,
+        "parent": "mouth"
+      },
+      {
+        "id": "teeth",
+        "label": {
+          "sv": "Tänder",
+          "en": "Teeth"
+        },
+        "codes": [
+          "38199008"
+        ],
+        "sided": false,
+        "parent": "mouth"
+      },
+      {
+        "id": "larynx",
+        "label": {
+          "sv": "Struphuvud",
+          "en": "Larynx"
+        },
+        "codes": [
+          "4596009"
+        ],
+        "sided": false,
+        "parent": "throat"
       }
     ],
     "subregions": {
@@ -1003,9 +1039,19 @@
       ],
       "foot": [
         "toes"
+      ],
+      "mouth": [
+        "tongue",
+        "teeth"
+      ],
+      "throat": [
+        "larynx"
       ]
     },
     "specificity": [
+      "tongue",
+      "teeth",
+      "larynx",
       "thumb",
       "fingers",
       "wrist",

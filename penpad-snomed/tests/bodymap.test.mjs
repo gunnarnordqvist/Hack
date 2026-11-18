@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { shapesFor, drawnIn, mainViewFor, sideOfCode, mentionsSide, ZOOMABLE } from "../web/bodymap.js";
+import { shapesFor, drawnIn, mainViewFor, sideOfCode, mentionsSide, ZOOM_OF, ZOOM_VIEWS } from "../web/bodymap.js";
 import { BODY } from "../web/vendor/bodypaths.js";
 
 test("regions are drawn where the anatomy says", () => {
@@ -60,8 +60,32 @@ test("each main view draws only its own outline", () => {
   assert.ok(shapesFor("hand", "left").anchors.thumb.length === 2);
 });
 
-test("only the hand zooms; side codes map to left and right", () => {
-  assert.deepEqual([...ZOOMABLE], ["hand"]);
+test("hand, leg, head-and-neck and back have a close-up; the trunk and arms do not", () => {
+  assert.deepEqual([...ZOOM_VIEWS].sort(), ["backzoom", "hand", "headsection", "leg"]);
+  assert.equal(ZOOM_OF.knee, "leg");
+  assert.equal(ZOOM_OF.head, "headsection");
+  assert.equal(ZOOM_OF.buttock, "backzoom");
+  for (const r of ["chest", "abdomen", "shoulder", "upperarm", "forearm"]) assert.equal(ZOOM_OF[r], undefined, r);
+});
+
+test("every close-up draws the regions it promises, and only valid ones", () => {
+  const regs = (v, side) => shapesFor(v, side).shapes.map((s) => s.region);
+  assert.deepEqual(regs("leg", "right"), ["thigh", "knee", "lowerleg", "ankle", "foot"]);
+  assert.ok(shapesFor("leg", "left").shapes.every((s) => s.side === "left"));
+  assert.ok(shapesFor("leg", "left").box.split(" ").length === 4);
+  assert.deepEqual(regs("headsection"), ["head", "nose", "mouth", "teeth", "tongue", "throat", "larynx"]);
+  assert.ok(regs("backzoom").includes("buttock") && regs("backzoom").includes("back"));
+  for (const v of ZOOM_VIEWS) for (const s of shapesFor(v, "right").shapes) assert.ok(s.paths.length && s.paths.every((d) => /^M/.test(d)), `${v}/${s.region}`);
+});
+
+test("a region only drawn in a close-up falls back to a drawn relative on the whole body", () => {
+  assert.equal(drawnIn("headsection", "tongue"), true);
+  assert.equal(drawnIn("front", "tongue"), false);
+  assert.equal(mainViewFor("tongue", "front").region, "head");
+  assert.equal(mainViewFor("larynx", "front").region, "neck");
+});
+
+test("side codes map to left and right", () => {
   assert.equal(sideOfCode("7771000"), "left");
   assert.equal(sideOfCode("24028007"), "right");
   assert.equal(sideOfCode("51440002"), null);

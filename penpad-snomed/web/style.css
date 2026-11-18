@@ -141,3 +141,4 @@ tr:last-child td { border-bottom: none; }
 .mapitem:hover { border-color: var(--accent); }
 .mapitem.on { background: var(--accent-soft); border-color: var(--accent); }
 .row.tight { margin-top: 4px; }
+.bm .leader { stroke: var(--muted); stroke-width: 1.2; pointer-events: none; }
