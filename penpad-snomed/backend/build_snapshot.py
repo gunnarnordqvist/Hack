@@ -133,10 +133,11 @@ def main():
     lab_file = ROOT / "cache" / "labels-for-extract.json"
     lab_file.parent.mkdir(exist_ok=True)
     lab_file.write_text(json.dumps({c: {"en": l["en"], "sv": l["sv"] if l["sv"] != l["en"] else None} for c, l in labels.items()}))
+    sample_texts = [e["text"] for e in cfg["examples"]]
     ex = json.loads(subprocess.run(["node", str(ROOT / "web/tools/extract_cli.mjs"), str(lab_file)],
-                                   input=json.dumps(SAMPLES), capture_output=True, text=True, check=True).stdout)
+                                   input=json.dumps(sample_texts), capture_output=True, text=True, check=True).stdout)
     samples = []
-    for text, e in zip(SAMPLES, ex):
+    for text, e in zip(sample_texts, ex):
         cand = {m: ranker.candidates(e["rest"] or text, m, 5) for m in (["text", "rerank"] if ranker.has_model else ["text"])}
         samples.append({"text": text, "extract": e, "candidates": cand})
 

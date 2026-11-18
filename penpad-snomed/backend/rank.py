@@ -63,12 +63,13 @@ class Ranker:
             en = {c["code"]: c["display"] for c in tx.expand_all(t["ecl"], lang="en")}
             sv = {c["code"]: c["display"] for c in tx.expand_all(t["ecl"], lang="sv")}
             for code in set(en) | set(sv):
-                e = en.get(code) or sv.get(code)
+                e = en.get(code)  # None for concepts that only the Swedish module has: never use the Swedish name as English
                 s = sv.get(code)
                 self.universe[code] = {"code": code, "en": e, "sv": s if s and s != e else None, "topic": t["id"]}
         self.names: list[tuple[str, str]] = []  # (code, text)
         for c in self.universe.values():
-            self.names.append((c["code"], c["en"]))
+            if c["en"]:
+                self.names.append((c["code"], c["en"]))
             if c["sv"]:
                 self.names.append((c["code"], c["sv"]))
         self.model_name = model

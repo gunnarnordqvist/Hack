@@ -116,6 +116,26 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.click(".loc button");
   await page.click('.segbtn:has-text("Fram")');
 
+  // 6c. English UI: suggestions, map list and examples are in English
+  await page.click('.segbtn:has-text("EN")');
+  await page.fill("#text", "ont i tummen");
+  await page.click("#go");
+  await page.waitForFunction(() => window.__penpad.cand && window.__penpad.cand.query === "ont i tummen" && window.__penpad.finding, null, { timeout: 60000 });
+  const shownNames = await page.$$eval(".cands .cname strong", (n) => n.map((x) => x.textContent));
+  const enNames = await page.evaluate(() => window.__penpad.cand.items.filter((i) => i.en).slice(0, 5).map((i) => i.en));
+  check("English UI: suggestions are shown in English", shownNames.length > 0 && JSON.stringify(shownNames) === JSON.stringify(enNames), shownNames.join(" | "));
+  check("English UI: no Swedish name next to a suggestion", (await page.$$(".cands .alt")).length === 0);
+  const chipCount = (await page.$$("#samples .chip")).length;
+  const enExamples = await page.evaluate(() => window.__penpad.snap.cfg.examples.filter((e) => e.lang === "en").length);
+  check("English UI: only English examples are offered", chipCount === enExamples && chipCount > 0, `chips=${chipCount}`);
+  await page.click('.bm .part[data-region="knee"][data-side="right"] path >> nth=0');
+  await page.waitForSelector(".mapitem", { timeout: 60000 });
+  const mapNames = await page.$$eval(".mapitem span:first-child", (n) => n.map((x) => x.textContent));
+  const mapEn = await page.evaluate(() => window.__penpad.map.sel && window.__penpad.snap.bodymap.findings[window.__penpad.map.sel.region].map((c) => window.__penpad.known.get(c)).filter((u) => u && u[1]).map((u) => u[1]));
+  check("English UI: the map list is in English", mapNames.length > 0 && mapNames.every((n) => mapEn.includes(n)), `n=${mapNames.length}`);
+  await page.click(".loc button");
+  await page.click('.segbtn:has-text("SV")');
+
   // 7. another sample: swelling of the right foot (hard)
   await page.click('.chip:has-text("svullen höger fot")');
   await page.waitForFunction(() => window.__penpad.finding && window.__penpad.finding.topic === "swelling", null, { timeout: 60000 });

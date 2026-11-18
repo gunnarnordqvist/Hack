@@ -30,7 +30,7 @@ export function rankLexical(query, universe, k = 5, threshold = 0.45) {
     const s = Math.max(lexScore(q, en), sv ? lexScore(q, sv) : 0);
     if (s > 0) rows.push({ code, en, sv, topic, score: +s.toFixed(4), confidence: +Math.min(1, s).toFixed(3), scores: { filter: false, lex: +s.toFixed(3), emb: null } });
   }
-  rows.sort((a, b) => b.score - a.score || a.en.length - b.en.length);
+  rows.sort((a, b) => b.score - a.score || (a.en || a.sv || "").length - (b.en || b.sv || "").length);
   const items = rows.slice(0, k).map((r, i) => ({ ...r, rank: i + 1 }));
   return { query: q, mode: "text", items, low_confidence: !items.length || items[0].score < threshold, model: null, threshold };
 }
