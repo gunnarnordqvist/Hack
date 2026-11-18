@@ -7,3 +7,11 @@ backend/embeddings-*.npy
 screenshots/
 web/data/snapshot.json
 docs/eval-candidates.json
+# secrets and local environment: never committed (vibetodev step 7/8)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+data/real/

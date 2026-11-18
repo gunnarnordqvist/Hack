@@ -1,0 +1,19 @@
+# Run record. Written by the assistant from `git log`; NOT host-attested.
+id: RUN-2026-11-18
+actor: "Claude (AI assistant), cloud session, on behalf of Gunnar Nordqvist"
+date: 2026-11-18
+mandate: docs/mandate.yaml (draft, unsigned)
+commits:
+  - c44f0be Initial commit
+  - 18b5abf Add penpad-snomed prototype
+  - 5ef8410 body map
+  - 5c194bc open figure + client mode + remove SNOMED content
+  - ade9bd0 workflow (gh-pages deploy) on main
+  - 4d2dcc0 publish script + URL README
+  - 39d8a79 merge main into dev
+  - c409f43 build and publish with a GitHub Action
+  - 14656c1 version.json
+  - c2196b6 side filter
+  - 2bc2c5f English UI fix
+pushed_to: [dev branch claude/zealous-meitner-xadiv3, main (waiver W1), gh-pages (by workflow)]
+not_done: [deputy, independent oracle, third-party review, takeover test, tag/release]

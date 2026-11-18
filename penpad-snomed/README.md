@@ -61,7 +61,7 @@ python tools/publish_site.py     # builds, commits to gh-pages in a temporary wo
 Then GitHub → **Actions → "Deploy site" → Run workflow**. The workflow is on `main` because the `github-pages` environment only
 accepts deployments from the default branch (a workflow on `gh-pages` was tried and refused). Alternatively set Pages to
 "Deploy from a branch: gh-pages"; then no workflow is needed. After publishing, `node tests/e2e.cjs https://gunnarnordqvist.github.io/Hack/ out/`
-runs the 26 browser checks against the live site.
+runs the browser checks against the live site.
 
 ## What was checked
 
@@ -72,8 +72,8 @@ All of this was run, see `tests/`.
   Server: HL7 Nordics `tx-nordics.fhir.org`, SNOMED CT International 20260801, Swedish module 20260531.
 - **Swedish terms are real SNOMED CT** (Swedish module via `displayLanguage=sv`), not translations of ours. Where the module has
   no term (e.g. *Rapid onset*) the English term is shown and the UI says so.
-- **Tests:** 25 JavaScript (`node --test tests/*.test.mjs`), 13 Python (`python -m unittest tests/test_backend.py`), and 26
-  browser checks run in **each of the three modes** (`node tests/e2e.cjs <url> <dir>`, needs Playwright; set `HTTPS_PROXY` if
+- **Tests:** 35 JavaScript (`node --test tests/*.test.mjs`), 28 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 34
+  browser checks run in **each of the modes** (`node tests/e2e.cjs <url> <dir>`, needs Playwright; set `HTTPS_PROXY` if
   outbound HTTPS needs a proxy). The unit tests use neutral fixture labels in our own words, not SNOMED terms.
 - **Candidate finder, own check on 14 phrases** (`backend/eval_candidates.py`, **our own labels, not a benchmark**; the
   confidence threshold was tuned after looking at one of these phrases):
@@ -139,10 +139,18 @@ reached by text or the search box.
 backend/   tx.py (FHIR client + disk cache)  rank.py  verify_topics.py  build_snapshot.py  server.py  eval_candidates.py  topics.json
 web/       index.html  app.js  extract.js (free text -> slots)  generators.js  lexrank.js  txclient.js (browser FHIR client)
            bodymap.js  vendor/bodypaths.js (generated, MIT)  data/snapshot.json (generated, not committed)
-tests/     *.test.mjs  test_backend.py  e2e.cjs  fixtures/labels.json (neutral labels)
+tests/     *.test.mjs  test_*.py  e2e.cjs  fixtures/labels.json (neutral labels)
 tools/     build_site.py  publish_site.py  build_body_paths.py  make_artifact.py  make_test_labels.py  write_notices.py  bbox_parts.cjs
 THIRD_PARTY_NOTICES.md
 ```
 
 Made by Gunnar Nordqvist with Claude. https://books.geon.se
-Contact: TODO add the GitHub and LinkedIn links before submitting; no email address is published.
+## Governance
+
+Built under the practices of the book *Vibe to Dev* (vibetodev.geon.se). Tier A: a demo with made-up examples; **never enter real patient data**.
+`AGENTS.md` (rules for the AI assistant), `docs/mandate.yaml` (draft), `docs/specification.yaml` (checked by `tools/check_spec.py`),
+`docs/design.md`, `docs/adr/`, `docs/runbook.md`, `docs/build-record.yaml` (honest gate statuses: no gate needing a second person is met),
+`dependency-policy.yaml`, `CHANGELOG.md`. Checks: `tools/scan_secrets.py`, `tools/check_dependencies.py`, `tools/check_spec.py`.
+Optional environment variables for the local server: `PENPAD_TX` (terminology server), `PENPAD_CACHE`, `PENPAD_OFFLINE`, `PENPAD_MODEL`.
+
+Contact: Gunnar Nordqvist, books.geon.se. TODO: add the GitHub and LinkedIn links before submitting; no email address is published.

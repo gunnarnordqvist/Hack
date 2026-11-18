@@ -1,0 +1,38 @@
+# Build record (vibetodev). Written by the AI assistant. A gate is `met` only with artifact + date + result; none can be met by the builder alone.
+intent: "Prototype for the PEN&PAD Nordic Hackathon 2026 bonus track: terminology-driven structured input with SNOMED CT, openEHR and FHIR outputs."
+owner: Gunnar Nordqvist
+tier: A
+tier_reasoning: "Public demo, made-up examples only. Real patient data or clinical use would be tier D; the stop signal 'needs free text or health data' is acknowledged and the guard and warnings enforce the boundary."
+date: 2026-11-18
+
+gates:
+  intent:        {status: met,         artifact: "README.md, docs/design.md", date: 2026-11-18, note: "stated by owner in conversation; written by assistant"}
+  tier:          {status: met,         artifact: "this file (tier_reasoning)", date: 2026-11-18, missing: "owner confirmation in writing"}
+  workshop:      {status: not_started, missing: "no workshop with a second person"}
+  specification: {status: not_started, artifact: "docs/specification.yaml (draft)", missing: "owner sign-off; 10 rules exceed the advised 8"}
+  design:        {status: not_started, artifact: "docs/design.md, docs/adr/ADR-001..004", missing: "owner approval of ADRs"}
+  build:         {status: met,         artifact: "git log (11 commits on 2026-11-18)", date: 2026-11-18}
+  prove:         {status: failed,      artifact: "tests/*, e2e.cjs", missing: "independent oracle: the 14-phrase gold set and labels.json were written by the assistant, not by a human other than the builder; e2e not run in CI", note: "tests pass, but the gate requires an independent oracle"}
+  secure:        {status: not_started, artifact: "tools/scan_secrets.py, tools/check_dependencies.py, dependency-policy.yaml", missing: "all reviewers are 'pending'; no third-party review"}
+  ship:          {status: not_started, artifact: ".github/workflows/pages.yml", missing: "first run of the pinned pipeline not yet verified; no tag/release"}
+  run:           {status: not_started, artifact: "docs/runbook.md", missing: "no monitoring; no one else has run the runbook"}
+  own:           {status: failed,      missing: "no deputy, no sunset date, owner countersign missing"}
+  hand_over:     {status: not_started, missing: "takeover test T1-T10 not performed; revert test not performed by someone else"}
+
+deviations:
+  - "Assistant pushed to main and edited the workflow (default mandate forbids); owner allowed it in conversation; recorded as waiver W1, needs countersign."
+  - "Tests and eval labels were written by the same assistant that built the code (not an independent oracle)."
+  - "Commit 18b5abf contains files with SNOMED terms (tests/fixtures/labels.json original version, docs/eval-candidates.json); history not rewritten, owner decision pending."
+  - "Pinned action SHAs obtained from git ls-remote; unverified until a run passes."
+  - "Tier-proportionality table and chapters 5, 6, 9, 17, 22 of the book were not read when this record was made."
+  - "make_artifact.py and the private artifact are stale."
+
+ai_review:
+  - {date: 2026-11-18, by: "fresh AI subagent, given the code only", approval: false, findings_fixed: "guard bypass (separators, dashes, full-width digits, phone, spelled-out e-mail), Google Fonts removed, CI permissions scoped per job, persist-credentials false, spec R6 method corrected", findings_open: "SNOMED terms in git history (owner decision); guard cannot detect names or addresses; spec check proves test existence, not that a test exercises the rule; e2e not in CI; clientCandidates untested in unit tests"}
+
+needs_a_human:
+  - "Independent oracle author (a person who has not seen the code)"
+  - "Third-party review (AI review is not approval)"
+  - "Deputy and sunset date"
+  - "Takeover test and revert test"
+  - "Owner countersign of mandate, specification, ADRs"

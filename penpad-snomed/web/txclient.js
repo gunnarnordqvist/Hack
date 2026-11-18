@@ -2,6 +2,8 @@
 // content has to be stored in this repository: the visitor's browser asks the server directly (the server allows
 // cross-origin requests). Only standard operations: ValueSet/$expand, ValueSet/$validate-code, CodeSystem/$lookup.
 
+import { personalDataReason, PERSONAL_DATA_ERROR } from "./guard.js";
+
 export const TX_BASE = "https://tx-nordics.fhir.org/fhir/r4";
 const SCT = "http://snomed.info/sct";
 const SWEDEN = "http://snomed.info/sct/45991000052106"; // Swedish module; no version = the server's latest
@@ -35,6 +37,8 @@ const langParams = (lang) => (lang === "sv" ? { "system-version": `${SCT}|${SWED
 
 /** ValueSet/$expand on an implicit SNOMED CT ECL value set -> {total, items:[{code,display}]} */
 export async function expand(ecl, { filter, lang = "en", count = 200, offset = 0 } = {}) {
+  // the network boundary: text that looks like a personal identifier is never sent
+  if (filter && personalDataReason(filter)) throw new TxError(PERSONAL_DATA_ERROR);
   const p = { url: `${SCT}?fhir_vs=ecl/${ecl}`, count: String(count), offset: String(offset), ...langParams(lang) };
   if (filter) p.filter = filter;
   const j = await get("ValueSet/$expand", p);

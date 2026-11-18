@@ -1,0 +1,66 @@
+# Specification (vibetodev step 4). Numbered rules, each with an example, an error case and the tests that prove it.
+# tools/check_spec.py fails if a listed test does not exist. Written by the AI assistant from the owner's brief: DRAFT until the owner signs it.
+version: 1
+status: draft
+tier: A          # personal/demo; made-up examples only. Real patient data would be tier D (see docs/build-record.yaml)
+
+rules:
+  - id: R1
+    rule: "Free text is split into slots (side, duration, severity, character, progress) by a lexicon; what is left is the finding text."
+    example: {given: "Swedish text 'värk i höger hand sedan två dagar'", then: "side=right, duration=PT2D, the rest is searched as finding"}
+    error_case: "Text without slot words is left unchanged; a number without unit is not a duration."
+    tests: ["Swedish dictation fills side, duration and character, leaves the finding", "text without slot words is left alone", "a number word without a unit is not a duration"]
+  - id: R2
+    rule: "Candidate findings come only from the terminology server's ECL result set; the model/lexical score only orders them."
+    example: {given: "a query for thumb pain", then: "every candidate id is in the server's expansion of the finding ECL"}
+    error_case: "A concept the server did not return is never offered."
+    tests: ["test_every_candidate_is_in_the_server_universe", "token overlap scoring"]
+  - id: R3
+    rule: "A finding without English term does not break ranking; ties are broken by the shorter name."
+    example: {given: "concept with only a Swedish name", then: "it is ranked without error"}
+    error_case: "Missing names never raise."
+    tests: ["a concept without an English term does not break the ranking", "ties are broken by the shorter name, using whichever name exists"]
+  - id: R4
+    rule: "Laterality is offered only when the finding site is lateralizable; otherwise it is ignored."
+    example: {given: "thumb finding", then: "left/right is asked for"}
+    error_case: "Non-lateralizable site: laterality ignored."
+    tests: ["laterality is ignored when the body site is not lateralizable", "laterality block shown for lateralizable site", "test_detail_gives_lateralizable_site_for_thumb"]
+  - id: R5
+    rule: "Outputs: sentence (sv/en, clinician/patient), SNOMED expression, openEHR COMPOSITION, FHIR Condition. Terms missing in Swedish are shown in English and reported."
+    example: {given: "a chosen finding with right side and severity", then: "all four outputs carry the same codes"}
+    error_case: "Unmapped terms are listed, not invented."
+    tests: ["clinician sentence, Swedish", "clinician sentence, English", "patient sentence, Swedish and English", "SNOMED expression", "openEHR composition carries SNOMED codes and the archetype nodes", "FHIR Condition", "codesUsed lists finding, site and every chosen value", "ISO 8601 durations", "a term missing in the Swedish module is shown in English and reported"]
+  - id: R6
+    rule: "Codes are validated against the server; a code with non-digits is refused by the local server."
+    example: {given: "GET /api/validate?code= with a valid id", then: "result from server"}
+    error_case: "Non-numeric code: 400."
+    tests: ["test_health_and_validate_input_checks"]
+  - id: R7
+    rule: "Body map: regions are drawn where anatomy says; clicking a region lists findings of that region (by SNOMED is-a on finding site); a side from the click overrides typed side; findings naming the opposite side are not listed."
+    example: {given: "click on the left hand", then: "no finding about the right hand is listed"}
+    error_case: "An undrawn region falls back to its nearest drawn relative."
+    tests: ["regions are drawn where the anatomy says", "a region that is not drawn falls back to its nearest drawn relative", "paired regions come in left and right, unpaired ones do not", "a finding that names the other side is recognised, in English and Swedish", "left hand: no finding about the right hand is listed", "right hand: no finding about the left hand is listed", "side from the map becomes laterality (right)"]
+  - id: R8
+    rule: "Language: with English chosen, no Swedish name is shown next to a suggestion and only English examples are offered."
+    example: {given: "UI in English", then: "suggestions in English"}
+    error_case: "n/a"
+    tests: ["English UI: no Swedish name next to a suggestion", "English UI: only English examples are offered", "English UI: suggestions are shown in English"]
+  - id: R9
+    rule: "Personal data guard: text that looks like a personal identity number or an e-mail address is never sent to the terminology server; a warning is shown."
+    example: {given: "'191212121212' typed as search", then: "no request leaves the page"}
+    error_case: "Refused before any request."
+    tests: ["personal identity numbers are recognised in the usual forms", "e-mail addresses are recognised", "a filter that looks like a personal identity number is refused before any request", "personal data guard: nothing with the number left the page", "personal data guard: warning shown"]
+  - id: R10
+    rule: "The published site contains no SNOMED CT content (no snapshot) and every file the page imports exists; the repository holds no secrets."
+    example: {given: "build of the site", then: "no data/snapshot.json, a config.json instead"}
+    error_case: "Build fails if snapshot present."
+    tests: ["test_no_snapshot_and_a_config_file", "test_every_relative_import_exists", "test_the_page_loads_only_files_that_exist", "test_the_repository_has_no_findings"]
+
+never_do:
+  - "Send anything that looks like personal data to an outside service."
+  - "Publish SNOMED CT content (snapshots, label files) or copyrighted material."
+  - "Offer a finding the terminology server did not return."
+  - "Use the application for real patient data or clinical decisions."
+
+open_questions:
+  - "Owner to confirm the rules and the examples (not yet done)."

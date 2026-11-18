@@ -1,0 +1,25 @@
+# Mandate for the AI assistant (vibetodev). DRAFT written by the assistant from the owner's statements in conversation.
+# Not valid until the owner countersigns (owner_signature below is empty on purpose).
+status: draft
+owner: Gunnar Nordqvist
+deputy: null            # none named: gate "Own" cannot be met
+stop_holders: [Gunnar Nordqvist]
+tier: A
+levels:
+  allowed: [read, edit_files, run_tests, commit_dev_branch]
+  allowed_by_waiver: [push_main, edit_workflow, publish_gh_pages]   # see waivers
+  not_used: [level_4_autonomous_production_changes]
+never:
+  - "send personal data or health data to any service"
+  - "commit secrets, SNOMED CT content or copyrighted material"
+  - "open a pull request to a third party's repository without the owner's explicit approval"
+  - "rewrite published git history without the owner's explicit approval"
+  - "approve its own work (AI review is not approval)"
+waivers:
+  - id: W1
+    what: "Assistant pushes to main and edits .github/workflows/pages.yml"
+    why: "Owner wrote in conversation 2026-11-18: push freely to gunnarnordqvist/Hack and gh-pages, and asked for the GitHub Action; the github-pages environment only accepts main."
+    expires: 2026-11-30
+    owner_countersign: null
+review_date: 2026-11-30
+owner_signature: null

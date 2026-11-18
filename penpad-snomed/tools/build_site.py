@@ -18,8 +18,10 @@ out.mkdir(parents=True, exist_ok=True)
 (out / "data").mkdir(exist_ok=True)
 (out / "vendor").mkdir(exist_ok=True)
 
-for f in ["index.html", "style.css", "app.js", "extract.js", "generators.js", "lexrank.js", "bodymap.js", "txclient.js"]:
-    shutil.copy(ROOT / "web" / f, out / f)
+# every top-level web file (index.html, style.css and all .js modules): a hand-written list once missed a new module
+for f in sorted((ROOT / "web").iterdir()):
+    if f.is_file():
+        shutil.copy(f, out / f.name)
 shutil.copy(ROOT / "web" / "vendor" / "bodypaths.js", out / "vendor" / "bodypaths.js")
 shutil.copy(ROOT / "backend" / "topics.json", out / "data" / "config.json")
 shutil.copy(ROOT / "THIRD_PARTY_NOTICES.md", out / "THIRD_PARTY_NOTICES.md")

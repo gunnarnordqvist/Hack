@@ -116,6 +116,15 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.click(".loc button");
   await page.click('.segbtn:has-text("Fram")');
 
+  // 6b2. personal data guard: a text with an identity number is refused and no request carries it
+  const leaked = [];
+  page.on("request", (r) => { if (/121212/.test(decodeURIComponent(r.url()))) leaked.push(r.url()); });
+  await page.fill("#text", "ont i tummen 121212-1212");
+  await page.click("#go");
+  await page.waitForSelector("#cand-error", { timeout: 60000 });
+  check("personal data guard: warning shown", /personuppgift/i.test(await page.textContent("#cand-error")));
+  check("personal data guard: nothing with the number left the page", leaked.length === 0, leaked.join(" "));
+
   // 6c. English UI: suggestions, map list and examples are in English
   await page.click('.segbtn:has-text("EN")');
   await page.fill("#text", "ont i tummen");
