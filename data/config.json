@@ -1,0 +1,1046 @@
+{
+  "meta": {
+    "note": "Topic and slot configuration. Every SNOMED CT code here is verified against the terminology server by build_snapshot.py. Synonym lists are our own (unreviewed) and only used to read free text; displayed terms come from SNOMED CT (English core, Swedish module).",
+    "refsets": {
+      "lateralizable": "723264001"
+    },
+    "attributes": {
+      "findingSite": "363698007",
+      "laterality": "272741003",
+      "severity": "246112005",
+      "clinicalCourse": "263502005"
+    }
+  },
+  "units": [
+    {
+      "key": "minute",
+      "code": "1156209001",
+      "iso": "M",
+      "time": true,
+      "sv": [
+        "minut",
+        "minuter"
+      ],
+      "en": [
+        "minute",
+        "minutes",
+        "min"
+      ],
+      "svLabel": [
+        "minut",
+        "minuter"
+      ]
+    },
+    {
+      "key": "hour",
+      "code": "258702006",
+      "iso": "H",
+      "time": true,
+      "sv": [
+        "timme",
+        "timmar",
+        "tim"
+      ],
+      "en": [
+        "hour",
+        "hours",
+        "hr",
+        "hrs"
+      ],
+      "svLabel": [
+        "timme",
+        "timmar"
+      ]
+    },
+    {
+      "key": "day",
+      "code": "258703001",
+      "iso": "D",
+      "sv": [
+        "dag",
+        "dagar",
+        "dygn"
+      ],
+      "en": [
+        "day",
+        "days"
+      ],
+      "svLabel": [
+        "dag",
+        "dagar"
+      ]
+    },
+    {
+      "key": "week",
+      "code": "258705008",
+      "iso": "W",
+      "sv": [
+        "vecka",
+        "veckor",
+        "v"
+      ],
+      "en": [
+        "week",
+        "weeks",
+        "wk",
+        "wks"
+      ],
+      "svLabel": [
+        "vecka",
+        "veckor"
+      ]
+    },
+    {
+      "key": "month",
+      "code": "258706009",
+      "iso": "M",
+      "sv": [
+        "månad",
+        "månader",
+        "mån"
+      ],
+      "en": [
+        "month",
+        "months"
+      ],
+      "svLabel": [
+        "månad",
+        "månader"
+      ]
+    },
+    {
+      "key": "year",
+      "code": "258707000",
+      "iso": "Y",
+      "sv": [
+        "år"
+      ],
+      "en": [
+        "year",
+        "years",
+        "yr",
+        "yrs"
+      ],
+      "svLabel": [
+        "år",
+        "år"
+      ]
+    }
+  ],
+  "slots": {
+    "laterality": {
+      "ecl": "<< 182353008",
+      "quick": [
+        "7771000",
+        "24028007"
+      ],
+      "more": [
+        "51440002"
+      ],
+      "requires": "lateralizable",
+      "attribute": "272741003",
+      "label": {
+        "sv": "Sida",
+        "en": "Side"
+      }
+    },
+    "character": {
+      "ecl": "<< 410720000",
+      "quick": [
+        "27635008",
+        "83644001",
+        "29695002",
+        "36349006"
+      ],
+      "limit": 12,
+      "label": {
+        "sv": "Karaktär",
+        "en": "Character"
+      }
+    },
+    "consistency": {
+      "ecl": "37378003 OR 20583004 OR 72505002",
+      "quick": [
+        "37378003",
+        "20583004",
+        "72505002"
+      ],
+      "label": {
+        "sv": "Konsistens",
+        "en": "Consistency"
+      }
+    },
+    "severity": {
+      "ecl": "<< 272141005",
+      "quick": [
+        "255604002",
+        "6736007",
+        "24484000"
+      ],
+      "limit": 12,
+      "attribute": "246112005",
+      "label": {
+        "sv": "Svårighetsgrad",
+        "en": "Severity"
+      }
+    },
+    "onset": {
+      "ecl": "<< 288524001 OR << 424124008",
+      "quick": [
+        "385315009",
+        "61751001",
+        "1384228004"
+      ],
+      "limit": 12,
+      "attribute": "263502005",
+      "label": {
+        "sv": "Debut",
+        "en": "Onset"
+      }
+    },
+    "pattern": {
+      "ecl": "7087005 OR 255238004 OR 229803000",
+      "quick": [
+        "7087005",
+        "255238004",
+        "229803000"
+      ],
+      "label": {
+        "sv": "Mönster",
+        "en": "Pattern"
+      }
+    },
+    "progress": {
+      "ecl": "3442003 OR 260388006 OR 231877006",
+      "quick": [
+        "3442003",
+        "260388006",
+        "231877006"
+      ],
+      "label": {
+        "sv": "Förlopp",
+        "en": "Progress"
+      }
+    },
+    "duration": {
+      "kind": "duration",
+      "label": {
+        "sv": "Hur länge",
+        "en": "Duration"
+      }
+    }
+  },
+  "topics": [
+    {
+      "id": "pain",
+      "label": {
+        "sv": "Smärta",
+        "en": "Pain"
+      },
+      "focus": "22253000",
+      "ecl": "<< 22253000",
+      "slots": [
+        "laterality",
+        "duration",
+        "character",
+        "severity",
+        "onset",
+        "pattern",
+        "progress"
+      ],
+      "patient": {
+        "sv": {
+          "have": "Du har ont i {site}",
+          "explain": "Svaren du ger hjälper din vårdgivare att förstå smärtan innan ni ses."
+        },
+        "en": {
+          "have": "You have pain in your {site}",
+          "explain": "Your answers help your care provider understand the pain before you meet."
+        }
+      }
+    },
+    {
+      "id": "swelling",
+      "label": {
+        "sv": "Svullnad",
+        "en": "Swelling"
+      },
+      "focus": "65124004",
+      "ecl": "<< 65124004",
+      "slots": [
+        "laterality",
+        "duration",
+        "consistency",
+        "severity",
+        "onset",
+        "progress"
+      ],
+      "patient": {
+        "sv": {
+          "have": "Du har en svullnad i {site}",
+          "explain": "Svaren du ger hjälper din vårdgivare att bedöma svullnaden innan ni ses."
+        },
+        "en": {
+          "have": "You have swelling in your {site}",
+          "explain": "Your answers help your care provider assess the swelling before you meet."
+        }
+      }
+    }
+  ],
+  "lexicon": {
+    "7771000": {
+      "sv": [
+        "vänster",
+        "vänstra",
+        "vänstersidig"
+      ],
+      "en": [
+        "left"
+      ]
+    },
+    "24028007": {
+      "sv": [
+        "höger",
+        "högra",
+        "högersidig"
+      ],
+      "en": [
+        "right"
+      ]
+    },
+    "51440002": {
+      "sv": [
+        "båda",
+        "bilateral",
+        "bådasidigt"
+      ],
+      "en": [
+        "both",
+        "bilateral"
+      ]
+    },
+    "255604002": {
+      "sv": [
+        "lindrig",
+        "lindriga",
+        "lätt",
+        "mild",
+        "svag"
+      ],
+      "en": [
+        "mild",
+        "slight",
+        "light"
+      ]
+    },
+    "6736007": {
+      "sv": [
+        "måttlig",
+        "måttliga",
+        "medelsvår"
+      ],
+      "en": [
+        "moderate"
+      ]
+    },
+    "24484000": {
+      "sv": [
+        "svår",
+        "svåra",
+        "kraftig",
+        "kraftiga",
+        "stark",
+        "starka"
+      ],
+      "en": [
+        "severe",
+        "intense",
+        "strong"
+      ]
+    },
+    "385315009": {
+      "sv": [
+        "plötslig",
+        "plötsligt",
+        "hastig"
+      ],
+      "en": [
+        "sudden",
+        "suddenly",
+        "abrupt"
+      ]
+    },
+    "61751001": {
+      "sv": [
+        "gradvis",
+        "gradvisa",
+        "smygande"
+      ],
+      "en": [
+        "gradual",
+        "gradually"
+      ]
+    },
+    "1384228004": {
+      "sv": [
+        "snabb",
+        "snabbt"
+      ],
+      "en": [
+        "rapid",
+        "rapidly"
+      ]
+    },
+    "7087005": {
+      "sv": [
+        "intermittent",
+        "periodvis",
+        "emellanåt",
+        "kommer och går",
+        "av och till"
+      ],
+      "en": [
+        "intermittent",
+        "comes and goes",
+        "on and off"
+      ]
+    },
+    "255238004": {
+      "sv": [
+        "konstant",
+        "konstanta",
+        "ständig",
+        "ständigt",
+        "kontinuerlig",
+        "kontinuerligt"
+      ],
+      "en": [
+        "constant",
+        "continuous",
+        "continuously",
+        "persistent"
+      ]
+    },
+    "229803000": {
+      "sv": [
+        "enstaka",
+        "engångs",
+        "ett enda"
+      ],
+      "en": [
+        "single",
+        "once",
+        "one episode"
+      ]
+    },
+    "3442003": {
+      "sv": [
+        "bättre",
+        "förbättras",
+        "förbättrats"
+      ],
+      "en": [
+        "better",
+        "improving",
+        "improved"
+      ]
+    },
+    "260388006": {
+      "sv": [
+        "oförändrad",
+        "oförändrat",
+        "samma",
+        "ingen förändring"
+      ],
+      "en": [
+        "unchanged",
+        "same",
+        "no change"
+      ]
+    },
+    "231877006": {
+      "sv": [
+        "sämre",
+        "värre",
+        "förvärras",
+        "förvärrats"
+      ],
+      "en": [
+        "worse",
+        "worsening",
+        "worsened"
+      ]
+    },
+    "27635008": {
+      "sv": [
+        "värkande",
+        "värk"
+      ],
+      "en": [
+        "aching",
+        "achy"
+      ]
+    },
+    "83644001": {
+      "sv": [
+        "molande",
+        "dov",
+        "dova"
+      ],
+      "en": [
+        "dull"
+      ]
+    },
+    "29695002": {
+      "sv": [
+        "bultande",
+        "bultar",
+        "pulserande"
+      ],
+      "en": [
+        "throbbing",
+        "pulsating"
+      ]
+    },
+    "36349006": {
+      "sv": [
+        "brännande",
+        "svidande"
+      ],
+      "en": [
+        "burning"
+      ]
+    },
+    "37378003": {
+      "sv": [
+        "mjuk",
+        "mjuka"
+      ],
+      "en": [
+        "soft"
+      ]
+    },
+    "20583004": {
+      "sv": [
+        "fast",
+        "fasta"
+      ],
+      "en": [
+        "firm"
+      ]
+    },
+    "72505002": {
+      "sv": [
+        "hård",
+        "hårda"
+      ],
+      "en": [
+        "hard"
+      ]
+    }
+  },
+  "numbers": {
+    "sv": {
+      "en": 1,
+      "ett": 1,
+      "två": 2,
+      "tre": 3,
+      "fyra": 4,
+      "fem": 5,
+      "sex": 6,
+      "sju": 7,
+      "åtta": 8,
+      "nio": 9,
+      "tio": 10,
+      "elva": 11,
+      "tolv": 12
+    },
+    "en": {
+      "one": 1,
+      "a": 1,
+      "an": 1,
+      "two": 2,
+      "three": 3,
+      "four": 4,
+      "five": 5,
+      "six": 6,
+      "seven": 7,
+      "eight": 8,
+      "nine": 9,
+      "ten": 10,
+      "eleven": 11,
+      "twelve": 12
+    }
+  },
+  "relativeDays": {
+    "sv": {
+      "igår": 1,
+      "i går": 1,
+      "idag": 0,
+      "i dag": 0
+    },
+    "en": {
+      "yesterday": 1
+    }
+  },
+  "patientPhrases": {
+    "sv": {
+      "character": {
+        "27635008": "värkande",
+        "83644001": "molande",
+        "29695002": "bultande",
+        "36349006": "brännande"
+      },
+      "consistency": {
+        "37378003": "mjuk",
+        "20583004": "fast",
+        "72505002": "hård"
+      },
+      "severity": {
+        "255604002": "lindrig",
+        "6736007": "måttlig",
+        "24484000": "svår"
+      },
+      "onset": {
+        "385315009": "Det började plötsligt.",
+        "61751001": "Det började gradvis.",
+        "1384228004": "Det började snabbt."
+      },
+      "pattern": {
+        "7087005": "Det kommer och går.",
+        "255238004": "Det är konstant.",
+        "229803000": "Det har kommit vid ett enda tillfälle."
+      },
+      "progress": {
+        "3442003": "Det har blivit bättre.",
+        "260388006": "Det är oförändrat.",
+        "231877006": "Det har blivit värre."
+      },
+      "lead": {
+        "pain": "Smärtan är {x}.",
+        "swelling": "Svullnaden känns {x}."
+      }
+    },
+    "en": {
+      "character": {
+        "27635008": "aching",
+        "83644001": "dull",
+        "29695002": "throbbing",
+        "36349006": "burning"
+      },
+      "consistency": {
+        "37378003": "soft",
+        "20583004": "firm",
+        "72505002": "hard"
+      },
+      "severity": {
+        "255604002": "mild",
+        "6736007": "moderate",
+        "24484000": "severe"
+      },
+      "onset": {
+        "385315009": "It started suddenly.",
+        "61751001": "It started gradually.",
+        "1384228004": "It started quickly."
+      },
+      "pattern": {
+        "7087005": "It comes and goes.",
+        "255238004": "It is constant.",
+        "229803000": "It has happened on a single occasion."
+      },
+      "progress": {
+        "3442003": "It has got better.",
+        "260388006": "It is unchanged.",
+        "231877006": "It has got worse."
+      },
+      "lead": {
+        "pain": "The pain is {x}.",
+        "swelling": "The swelling feels {x}."
+      }
+    }
+  },
+  "bodymap": {
+    "note": "Regions are body structures; membership of a finding is decided by the SNOMED CT hierarchy: a finding belongs to a region when its finding site is that structure or a descendant (is-a). The figure is drawn from MIT-licensed path data (web/vendor); subregions that are not drawn are reached by buttons.",
+    "regions": [
+      {
+        "id": "head",
+        "label": {
+          "sv": "Huvud",
+          "en": "Head"
+        },
+        "codes": [
+          "69536005"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "eye",
+        "label": {
+          "sv": "Öga",
+          "en": "Eye"
+        },
+        "codes": [
+          "81745001"
+        ],
+        "sided": true,
+        "parent": "head"
+      },
+      {
+        "id": "ear",
+        "label": {
+          "sv": "Öra",
+          "en": "Ear"
+        },
+        "codes": [
+          "117590005"
+        ],
+        "sided": true,
+        "parent": "head"
+      },
+      {
+        "id": "nose",
+        "label": {
+          "sv": "Näsa",
+          "en": "Nose"
+        },
+        "codes": [
+          "45206002"
+        ],
+        "sided": false,
+        "parent": "head"
+      },
+      {
+        "id": "mouth",
+        "label": {
+          "sv": "Mun",
+          "en": "Mouth"
+        },
+        "codes": [
+          "123851003",
+          "74262004"
+        ],
+        "sided": false,
+        "parent": "head"
+      },
+      {
+        "id": "throat",
+        "label": {
+          "sv": "Svalg",
+          "en": "Throat"
+        },
+        "codes": [
+          "54066008",
+          "312535008"
+        ],
+        "sided": false,
+        "parent": "neck"
+      },
+      {
+        "id": "neck",
+        "label": {
+          "sv": "Hals",
+          "en": "Neck"
+        },
+        "codes": [
+          "45048000"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "chest",
+        "label": {
+          "sv": "Bröstkorg",
+          "en": "Chest"
+        },
+        "codes": [
+          "51185008"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "abdomen",
+        "label": {
+          "sv": "Buk och bäcken",
+          "en": "Abdomen and pelvis"
+        },
+        "codes": [
+          "818983003",
+          "12921003"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "back",
+        "label": {
+          "sv": "Rygg",
+          "en": "Back"
+        },
+        "codes": [
+          "77568009",
+          "421060004"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "buttock",
+        "label": {
+          "sv": "Skinka",
+          "en": "Buttock"
+        },
+        "codes": [
+          "46862004"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "shoulder",
+        "label": {
+          "sv": "Axel",
+          "en": "Shoulder"
+        },
+        "codes": [
+          "16982005"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "upperarm",
+        "label": {
+          "sv": "Överarm",
+          "en": "Upper arm"
+        },
+        "codes": [
+          "40983000"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "elbow",
+        "label": {
+          "sv": "Armbåge",
+          "en": "Elbow"
+        },
+        "codes": [
+          "127949000"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "forearm",
+        "label": {
+          "sv": "Underarm",
+          "en": "Forearm"
+        },
+        "codes": [
+          "14975008"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "wrist",
+        "label": {
+          "sv": "Handled",
+          "en": "Wrist"
+        },
+        "codes": [
+          "74670003"
+        ],
+        "sided": true,
+        "parent": "hand"
+      },
+      {
+        "id": "hand",
+        "label": {
+          "sv": "Hand",
+          "en": "Hand"
+        },
+        "codes": [
+          "85562004"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "thumb",
+        "label": {
+          "sv": "Tumme",
+          "en": "Thumb"
+        },
+        "codes": [
+          "76505004"
+        ],
+        "sided": true,
+        "parent": "hand"
+      },
+      {
+        "id": "fingers",
+        "label": {
+          "sv": "Fingrar",
+          "en": "Fingers"
+        },
+        "codes": [
+          "7569003"
+        ],
+        "sided": true,
+        "parent": "hand"
+      },
+      {
+        "id": "hip",
+        "label": {
+          "sv": "Höft",
+          "en": "Hip"
+        },
+        "codes": [
+          "29836001"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "thigh",
+        "label": {
+          "sv": "Lår",
+          "en": "Thigh"
+        },
+        "codes": [
+          "68367000"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "knee",
+        "label": {
+          "sv": "Knä",
+          "en": "Knee"
+        },
+        "codes": [
+          "72696002"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "lowerleg",
+        "label": {
+          "sv": "Underben",
+          "en": "Lower leg"
+        },
+        "codes": [
+          "30021000"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "ankle",
+        "label": {
+          "sv": "Fotled",
+          "en": "Ankle"
+        },
+        "codes": [
+          "344001"
+        ],
+        "sided": true,
+        "parent": "foot"
+      },
+      {
+        "id": "foot",
+        "label": {
+          "sv": "Fot",
+          "en": "Foot"
+        },
+        "codes": [
+          "56459004"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "toes",
+        "label": {
+          "sv": "Tår",
+          "en": "Toes"
+        },
+        "codes": [
+          "29707007"
+        ],
+        "sided": true,
+        "parent": "foot"
+      }
+    ],
+    "subregions": {
+      "head": [
+        "eye",
+        "ear",
+        "nose",
+        "mouth"
+      ],
+      "neck": [
+        "throat"
+      ],
+      "upperarm": [
+        "elbow"
+      ],
+      "forearm": [
+        "elbow",
+        "wrist"
+      ],
+      "hand": [
+        "wrist",
+        "thumb",
+        "fingers"
+      ],
+      "foot": [
+        "toes"
+      ]
+    },
+    "specificity": [
+      "thumb",
+      "fingers",
+      "wrist",
+      "toes",
+      "elbow",
+      "eye",
+      "ear",
+      "nose",
+      "mouth",
+      "throat",
+      "hand",
+      "foot",
+      "knee",
+      "ankle",
+      "shoulder",
+      "upperarm",
+      "forearm",
+      "thigh",
+      "lowerleg",
+      "hip",
+      "buttock",
+      "neck",
+      "chest",
+      "abdomen",
+      "back",
+      "head"
+    ]
+  },
+  "examples": [
+    "smärta i vänster tumme sedan två dagar, bultande, måttlig, plötslig debut, sämre",
+    "my thumb hurts, left, since yesterday",
+    "svullen höger fot sedan en vecka, hård",
+    "buksmärta sedan tre dagar, intermittent",
+    "headache since two days, severe, throbbing",
+    "ont i halsen sedan igår",
+    "magont"
+  ]
+}
