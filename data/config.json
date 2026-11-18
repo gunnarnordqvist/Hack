@@ -228,6 +228,27 @@
         "sv": "Hur länge",
         "en": "Duration"
       }
+    },
+    "aspect": {
+      "ecl": "255549009 OR 255551008 OR 255561001 OR 49370004 OR 40415009 OR 46053002 OR 264217000 OR 261089000",
+      "quick": [
+        "255549009",
+        "255551008",
+        "255561001",
+        "49370004",
+        "40415009",
+        "46053002"
+      ],
+      "more": [
+        "264217000",
+        "261089000"
+      ],
+      "requires": "site",
+      "attribute": null,
+      "label": {
+        "sv": "Del av området",
+        "en": "Part of the area"
+      }
     }
   },
   "topics": [
@@ -241,6 +262,7 @@
       "ecl": "<< 22253000",
       "slots": [
         "laterality",
+        "aspect",
         "duration",
         "character",
         "severity",
@@ -269,6 +291,7 @@
       "ecl": "<< 65124004",
       "slots": [
         "laterality",
+        "aspect",
         "duration",
         "consistency",
         "severity",
@@ -536,6 +559,71 @@
       ],
       "en": [
         "hard"
+      ]
+    },
+    "255549009": {
+      "sv": [
+        "främre",
+        "framtill",
+        "anterior"
+      ],
+      "en": [
+        "anterior",
+        "front"
+      ]
+    },
+    "255551008": {
+      "sv": [
+        "bakre",
+        "baktill",
+        "posterior"
+      ],
+      "en": [
+        "posterior"
+      ]
+    },
+    "255561001": {
+      "sv": [
+        "medial",
+        "mediala",
+        "medialt",
+        "inre"
+      ],
+      "en": [
+        "medial",
+        "inner"
+      ]
+    },
+    "49370004": {
+      "sv": [
+        "lateral",
+        "laterala",
+        "lateralt",
+        "yttre"
+      ],
+      "en": [
+        "lateral",
+        "outer"
+      ]
+    },
+    "40415009": {
+      "sv": [
+        "proximal",
+        "proximala",
+        "proximalt"
+      ],
+      "en": [
+        "proximal"
+      ]
+    },
+    "46053002": {
+      "sv": [
+        "distal",
+        "distala",
+        "distalt"
+      ],
+      "en": [
+        "distal"
       ]
     }
   },
