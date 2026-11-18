@@ -308,6 +308,46 @@
           "explain": "Your answers help your care provider assess the swelling before you meet."
         }
       }
+    },
+    {
+      "id": "general",
+      "label": {
+        "sv": "Allmänt",
+        "en": "General"
+      },
+      "focus": "404684003",
+      "ecl": "<< 386661006 OR << 84229001 OR << 422587007 OR << 422400008 OR << 404640003 OR << 49727002 OR << 271807003 OR << 267036007 OR << 418290006 OR << 62315008 OR << 14760008 OR << 79890006",
+      "slots": [
+        "duration",
+        "severity",
+        "onset",
+        "pattern",
+        "progress"
+      ],
+      "patient": {
+        "sv": {
+          "have": "Du har {site}",
+          "explain": "Svaren du ger hjälper din vårdgivare att förstå dina besvär innan ni ses."
+        },
+        "en": {
+          "have": "You have {site}",
+          "explain": "Your answers help your care provider understand your symptoms before you meet."
+        }
+      },
+      "headline": [
+        "386661006",
+        "84229001",
+        "422587007",
+        "422400008",
+        "404640003",
+        "49727002",
+        "271807003",
+        "267036007",
+        "418290006",
+        "62315008",
+        "14760008",
+        "79890006"
+      ]
     }
   ],
   "lexicon": {
@@ -710,7 +750,8 @@
       },
       "lead": {
         "pain": "Smärtan är {x}.",
-        "swelling": "Svullnaden känns {x}."
+        "swelling": "Svullnaden känns {x}.",
+        "general": "Det är {x}."
       }
     },
     "en": {
@@ -747,7 +788,8 @@
       },
       "lead": {
         "pain": "The pain is {x}.",
-        "swelling": "The swelling feels {x}."
+        "swelling": "The swelling feels {x}.",
+        "general": "It is {x}."
       }
     }
   },
@@ -1129,6 +1171,17 @@
         ],
         "sided": true,
         "parent": null
+      },
+      {
+        "id": "whole",
+        "label": {
+          "sv": "Hela kroppen",
+          "en": "Whole body"
+        },
+        "codes": [],
+        "sided": false,
+        "parent": null,
+        "general": "general"
       }
     ],
     "subregions": {
@@ -1736,6 +1789,14 @@
     {
       "lang": "en",
       "text": "sore throat since yesterday"
+    },
+    {
+      "lang": "sv",
+      "text": "feber och hosta sedan tre dagar"
+    },
+    {
+      "lang": "en",
+      "text": "fever and cough for three days"
     }
   ]
 }

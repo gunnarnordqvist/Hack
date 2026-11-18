@@ -4,7 +4,8 @@
 
 import { extract, buildPhrases } from "./extract.js";
 import { sentence, expression, openEhr, fhirCondition, codesUsed, term, expressionMany, openEhrMany, fhirBundle, codesUsedMany } from "./generators.js";
-import { rankLexical, lexScore, contentWords, normalizeSymptoms } from "./lexrank.js";
+import { rankLexical, lexScore, contentWords, normalizeSymptoms, stems, GENERIC_STEMS as GENERIC, addsTopicWord } from "./lexrank.js";
+const GENERIC_PAIN = /^(pain|smärta|ont|ache|swelling|swollen|svullen|svullnad)?$/i;
 import { parseMulti, bodyTable, findBodyWord, aliasOf } from "./multi.js";
 import { drawBodyMap, ZOOM_OF, isZoomView, mainViewFor, drawnIn, sideOfCode, mentionsSide } from "./bodymap.js";
 import * as TX from "./txclient.js";
@@ -170,13 +171,24 @@ async function interpret() {
   S.ex = extract(S.text, S.snap.cfg, S.snap.labels, S.phrases);
   // several body parts in one sentence ("ont i armen, handen och huvudet"): one proposal each, checked against its own body part
   const mp = parseMulti(S.text, S.snap.cfg, S.snap.labels, S.phrases);
-  if (mp.multi) { await startMulti(mp); return; }
+  if (mp.multi || mp.hasOptional) { await startMulti(mp); return; }
+  await interpretSingle();
+}
+
+async function interpretSingle() {
   try { S.cand = await candidatesFor(S.ex.rest, S.text); }
   catch (e) { S.cand = { query: S.text, mode: "text", items: [], low_confidence: true, error: e && e.message === PERSONAL_DATA_ERROR ? "personal" : true }; }
   try { if (!S.cand.error) await applyRegionGuard(); } catch (_) { /* the check needs the server; without it the suggestions stay as they are */ }
   S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = S.ex.duration; S.expanded = new Set();
+  // outside what the demo covers: a pain or swelling finding is offered for words that name neither ("toenail fungus")
+  if (S.cand && !S.cand.error && !S.cand.part) {
+    const top = S.cand.items.find(inLang);
+    if (top && (top.topic === "pain" || top.topic === "swelling")) {
+      S.cand.scope = addsTopicWord(S.ex.rest, [top.en, top.sv]);
+    }
+  }
   const first = S.cand.items.find(inLang);
-  if (first && !S.cand.low_confidence && !(S.cand.part && S.cand.part.miss)) await selectFinding(first.code, true);
+  if (first && !S.cand.low_confidence && !S.cand.scope && !(S.cand.part && S.cand.part.miss)) await selectFinding(first.code, true);
   else render();
 }
 
@@ -216,7 +228,7 @@ async function searchInRegions(regions, p) {
     for (const tp of S.snap.cfg.topics) for (const lang of ["en", "sv"]) {
       // the word as typed and its base form ("handen" is not the start of any term, "hand" is); a compound is searched as it is
       const bases = p.base && p.base.length ? [p.base[lang === "sv" ? 0 : 1]] : [];
-      const words = [...new Set([...(p.lang === lang || !p.lang ? [p.bodyWord] : []), ...bases].filter(Boolean))];
+      const words = [...new Set([...(p.lang === lang || !p.lang ? [p.bodyWord] : []), ...bases, GENERIC_PAIN.test(findingWords) ? null : findingWords].filter(Boolean))];
       for (const word of words) calls.push(TX.expand(`(${tp.ecl}) : ${attr} = (${sites})`, { filter: word, lang, count: 60, designations: true }).then((r) => ({ tp, lang, r })).catch(() => null));
     }
   }
@@ -239,6 +251,9 @@ async function searchInRegions(regions, p) {
     if (otherSide && mentionsSide([e.en, e.sv], otherSide)) continue; // "right arm" never gets "pain in left arm"
     S.known.set(e.code, [e.code, e.en, e.sv, e.topic]);
     const names = [e.en, e.sv, ...e.names].filter(Boolean);
+    // finding words (anything but pain/swelling) must show up in a name: a body part alone does not make a match ("rash" on the arm)
+    const fstems = findingWords ? stems(findingWords).filter((w) => !GENERIC.has(w)) : [];
+    if (fstems.length && !names.some((n) => fstems.some((w) => stems(n).includes(w)))) continue;
     const sc = Math.max(...names.map((n) => lexScore(q, n)), ...partWords.flatMap((w) => names.map((n) => lexScore(`${findingWords} ${w}`, n))));
     rows.push({ code: e.code, en: e.en, sv: e.sv, topic: e.topic, sc, len: (nmI(e) || "").length });
   }
@@ -296,7 +311,19 @@ async function startMulti(mp) {
   S.cand = null; S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = null; S.confirmed = false;
   render();
   await Promise.all(m.items.map(async (it) => { Object.assign(it, await resolveProposal(it.p)); if (S.multi === m) renderCandidates(); }));
-  if (S.multi === m && liveCheck()) validateAll();
+  if (S.multi !== m) return;
+  // a clause that was only a maybe and matched nothing is not a finding: its words go back to the finding before it
+  const kept = [];
+  for (const it of m.items) {
+    if (it.p.optional && it.status !== "ok") {
+      const prev = kept[kept.length - 1];
+      if (prev && prev.entry) for (const [k, v] of Object.entries(it.p.values)) if (prev.entry.values[k] === undefined && visibleSlots(prev.entry.finding).includes(k)) prev.entry.values[k] = v;
+    } else kept.push(it);
+  }
+  m.items = kept;
+  if (m.items.length < 2) { S.multi = null; S.ex = extract(S.text, S.snap.cfg, S.snap.labels, S.phrases); await interpretSingle(); return; } // it was one finding after all
+  renderCandidates();
+  if (liveCheck()) validateAll();
 }
 
 function multiAdd(idxs) {
@@ -420,6 +447,15 @@ async function ensureRegion(region) {
   const bm = S.snap.bodymap;
   if (bm.findings[region]) return;
   const info = S.snap.cfg.bodymap.regions.find((r) => r.id === region);
+  if (info.general) { // "whole body": findings without a body part (fever, cough, ...) are those of the general topic
+    const tp = S.snap.cfg.topics.find((x) => x.id === info.general);
+    const ecl = tp.headline && tp.headline.length ? tp.headline.join(" OR ") : tp.ecl; // the main symptoms, not every subtype
+    const [en, sv] = await Promise.all(["en", "sv"].map((lang) => TX.expand(ecl, { lang, count: 300 })));
+    const by = new Map();
+    for (const [lang, r] of [["en", en], ["sv", sv]]) for (const it of r.items) { const e = by.get(it.code) || { code: it.code, en: null, sv: null }; e[lang] = it.display; by.set(it.code, e); }
+    bm.findings[region] = [...by.values()].map((e) => { if (e.sv === e.en) e.sv = null; S.known.set(e.code, [e.code, e.en, e.sv, tp.id]); return e.code; });
+    return;
+  }
   const sites = info.codes.map((c) => `<< ${c}`).join(" OR ");
   const attr = S.snap.cfg.meta.attributes.findingSite;
   const calls = [];
@@ -633,6 +669,7 @@ function renderMap() {
     ? h("div", { class: "row tight" }, h("button", { type: "button", class: "ghost small", id: "bm-back", onclick: () => { M.view = M.main; renderMap(); } }, t("toBody")),
         h("span", { class: "dim" }, viewLabel(M.view) + (M.side && M.view !== "headsection" && M.view !== "backzoom" ? ", " + sideLabel(M.side) : "")))
     : seg("", [["front", t("front")], ["back", t("back")]], M.view, (v) => { M.view = v; M.main = v; renderMap(); }));
+  box.append(h("button", { type: "button", class: "ghost small" + (M.sel && M.sel.region === "whole" ? " on" : ""), id: "bm-whole", onclick: () => { M.sel = { region: "whole", side: null }; M.more = false; renderMap(); } }, t("wholeBody")));
   const host = h("div", { class: "bmhost", id: "bmhost" });
   box.append(host);
   drawBodyMap(host, { view: M.view, side: M.side, sel: M.sel, hl: currentHl(), chart: chartMarks(), regionLabel, sideLabel }, { region: onRegion });
@@ -686,8 +723,9 @@ function renderCandidates() {
   }
   const shownItems = S.cand.items.filter(inLang);
   if (S.cand.error) box.append(h("p", { class: "warn", id: "cand-error" }, t(S.cand.error === "personal" ? "personal" : "txError")));
-  else if (!shownItems.length) box.append(h("p", { class: "warn" }, t("noMatch")));
   else if (S.cand.part && S.cand.part.miss) box.append(h("p", { class: "warn", id: "part-miss" }, "⚠ " + t("partMiss")));
+  else if (!shownItems.length) box.append(h("p", { class: "warn" }, t("noMatch")));
+  else if (S.cand.scope) box.append(h("p", { class: "warn", id: "scope-note" }, "⚠ " + t("scopeNote")));
   else if (S.cand.low_confidence) box.append(h("p", { class: "warn" }, "⚠ " + t("lowConf")));
   const list = h("ul", { class: "cands" });
   for (const it of shownItems.slice(0, 5)) {

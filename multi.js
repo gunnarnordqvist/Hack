@@ -10,6 +10,8 @@ import { extract } from "./extract.js";
 const L = "\\p{L}";
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const SHARED = ["onset", "progress", "pattern"]; // time words said once apply to every finding; side, severity, character, aspect never do
+// words that say nothing about a finding of their own ("sudden onset", "started yesterday")
+const IGNORE = new Set(["debut", "onset", "start", "started", "började", "dag", "dagar", "day", "days", "morgon", "morgonen", "morning", "natt", "natten", "night", "kväll", "kvällen", "evening", "idag", "today", "tonight", "också", "also", "mycket", "very", "lite", "bit", "little", "ganska", "quite"]);
 const ARTICLES = new Set(["i", "på", "av", "och", "and", "samt", "the", "my", "min", "mitt", "mina", "in", "on", "of", "a", "an", "också", "also", "båda", "both", "i", "to"]);
 
 const SPLIT = new RegExp(`\\s*(?:[,;+&]|(?<![${L}])(?:och|samt|and)(?![${L}]))\\s*`, "iu");
@@ -82,9 +84,13 @@ export function parseMulti(text, cfg, labels, phrases) {
       }
     } else if (!entries.length) {
       if (rest) entries.push({ clause, regions: null, bodyWord: null, query: rest, ...own });
+    } else if (meaningful(rest).some((w) => !IGNORE.has(w))) {
+      // a later clause with words of its own but no body word ("fever and cough"): maybe a finding of its own; the app tries it
+      // and puts it back to the finding before it (as plain words) if nothing matches
+      entries.push({ clause, regions: null, bodyWord: null, query: rest, optional: true, ...own });
     } else {
-      // no body word in a later clause: it only adds words (side, severity, "since yesterday" ...) to the finding before it
-      const last = entries[entries.length - 1];
+      // no body word and nothing else in a later clause: it only adds words (side, severity, "since yesterday" ...) to the finding before it
+      const last = [...entries].reverse().find((e) => !e.optional) || entries[entries.length - 1];
       for (const [k, v] of Object.entries(own.values)) if (last.values[k] === undefined) last.values[k] = v;
       if (own.duration && !last.duration) last.duration = own.duration;
     }
@@ -99,5 +105,5 @@ export function parseMulti(text, cfg, labels, phrases) {
     if (d) for (const e of entries) if (!e.duration) e.duration = d;
   }
   for (const e of entries) { const a = aliasOf(e.query, cfg); if (a) Object.assign(e, a); }
-  return { multi: entries.length > 1, entries };
+  return { multi: entries.filter((e) => !e.optional).length > 1, hasOptional: entries.some((e) => e.optional), entries };
 }
