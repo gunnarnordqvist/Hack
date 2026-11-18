@@ -196,6 +196,36 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.waitForFunction(() => window.__penpad.cand && window.__penpad.cand.query === "smärta i knä" && window.__penpad.finding, null, { timeout: 60000 });
   check("typed 'lateral' fills the aspect", (await page.evaluate(() => window.__penpad.values.aspect)) === "49370004");
 
+  // 6f. several findings after a fall: forearm, hand and head go into one list; outputs cover the whole list
+  if (await page.$("#bm-back")) await page.click("#bm-back");
+  await page.click(".loc button").catch(() => {});
+  const addFromMap = async (selector) => {
+    await page.click(selector);
+    await page.waitForSelector(".mapitem", { timeout: 60000 });
+    await page.click(".mapitem >> nth=0");
+    await page.waitForFunction(() => window.__penpad.finding, null, { timeout: 60000 });
+    await page.click("#add");
+  };
+  await addFromMap('.bm .part[data-region="forearm"][data-side="right"] path >> nth=0');
+  await addFromMap('.bm .part[data-region="hand"][data-side="right"] path >> nth=0');
+  await addFromMap('.bm .part[data-region="head"] path >> nth=0');
+  check("list holds three findings", (await page.evaluate(() => window.__penpad.chart.length)) === 3 && (await page.$$(".chartlist li")).length === 3);
+  check("the body marks the findings in the list", (await page.$$(".bm .part.ch")).length >= 2, `n=${(await page.$$(".bm .part.ch")).length}`);
+  await page.click('.tab:has-text("FHIR")');
+  const bundle = await page.textContent("pre.out");
+  check("FHIR output for the list is a Bundle of three Conditions", /"resourceType": "Bundle"/.test(bundle) && (bundle.match(/"resourceType": "Condition"/g) || []).length === 3);
+  await page.click('.tab:has-text("openEHR")');
+  const comp = JSON.parse(await page.textContent("pre.out"));
+  check("openEHR output for the list has one observation per finding", comp.content.length === 3 && comp.content.every((x) => x._type === "OBSERVATION"));
+  await page.click('[data-edit="0"]');
+  check("editing a listed finding opens it again", (await page.textContent("#add")).length > 0 && (await page.evaluate(() => window.__penpad.editing)) === 0);
+  await page.click("#add");
+  check("updating keeps three findings", (await page.evaluate(() => window.__penpad.chart.length)) === 3);
+  await page.click('[data-remove="2"]');
+  check("removing a listed finding", (await page.evaluate(() => window.__penpad.chart.length)) === 2);
+  await page.click("#clear-list");
+  check("clearing the list", (await page.evaluate(() => window.__penpad.chart.length)) === 0 && (await page.$$(".chartlist li")).length === 0);
+
   // 7. another sample: swelling of the right foot (hard)
   await page.click('.chip:has-text("svullen höger fot")');
   await page.waitForFunction(() => window.__penpad.finding && window.__penpad.finding.topic === "swelling", null, { timeout: 60000 });

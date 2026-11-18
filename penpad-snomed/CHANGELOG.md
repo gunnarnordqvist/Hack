@@ -9,6 +9,10 @@ Format: Keep a Changelog. No release has been tagged; tagging v0.1.0 is left to 
 - Personal-data guard, secret scan, dependency policy and checker, specification checker.
 - Pipeline: test → build → gh-pages → Pages deploy, actions pinned to commits.
 - Governance documents: AGENTS.md, mandate (draft), specification, design, ADRs, runbook, build record.
+- Close-ups for leg, back and a head-and-neck cross-section (drawn for this project); regions tongue, teeth, larynx.
+- Aspect of a site (anterior, posterior, medial, lateral, proximal, distal), the body's counterpart of a tooth surface.
+- A list of several findings with outputs for the whole list (expressions, one COMPOSITION, a FHIR Bundle) and marks on the body.
 ### Fixed
 - Findings about the opposite side are no longer listed; English UI no longer shows Swedish suggestions.
+- English search: filler words dropped, synonyms and the server's order used in ranking; everyday pain words (hurts, ont) find the pain concept.
 - Site build omitted a new module; the build now copies all web files and is tested.

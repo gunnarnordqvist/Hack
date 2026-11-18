@@ -100,12 +100,15 @@ export function drawBodyMap(svgHost, state, on) {
     hlRegion = r;
   }
   const matchSide = (want, have) => !want || !have || want === have;
+  // findings already in the list are marked too (the nearest drawn region, like the highlight)
+  const marks = (state.chart || []).map((c) => { let r = c.region; while (r && !present.has(r)) r = FALLBACK[r]; return { region: r, side: c.side }; }).filter((c) => c.region);
   for (const s of shapes) {
     const label = state.regionLabel(s.region) + (s.side ? ", " + state.sideLabel(s.side) : "");
     const isSel = state.sel && state.sel.region === s.region && matchSide(state.sel.side, s.side);
     const isHl = state.hl && hlRegion === s.region && matchSide(state.hl.side, s.side);
+    const isCh = marks.some((c) => c.region === s.region && matchSide(c.side, s.side));
     const g = el("g", {
-      class: "part" + (isSel ? " sel" : "") + (isHl ? " hl" : ""), tabindex: "0", role: "button",
+      class: "part" + (isSel ? " sel" : "") + (isHl ? " hl" : "") + (isCh ? " ch" : ""), tabindex: "0", role: "button",
       "aria-label": label, "aria-pressed": isSel ? "true" : "false", "data-region": s.region, "data-side": s.side || "",
     }, el("title", {}, label), s.paths.map((d) => el("path", { d })));
     const act = () => on.region(s.region, s.side);

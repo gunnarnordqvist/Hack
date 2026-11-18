@@ -244,13 +244,14 @@ const EXT = "https://penpad-snomed.example/StructureDefinition/";
 
 /** FHIR Condition. Course, pattern, progress, character and consistency go in extensions (no published profile yet). */
 export function fhirCondition(state, ctx, opts = {}) {
+  const id = opts.id || "demo-condition";
   const { labels } = ctx;
   const f = state.finding;
   const v = state.values;
   const lang = state.lang;
   const r = {
     resourceType: "Condition",
-    id: "demo-condition",
+    id,
     clinicalStatus: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/condition-clinical", code: "active" }] },
     verificationStatus: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/condition-ver-status", code: "unconfirmed" }] },
     code: { coding: [{ system: SCT, code: f.code, display: f.en }], text: findingTerm(f, lang) },
@@ -270,4 +271,41 @@ export function fhirCondition(state, ctx, opts = {}) {
   if (ext.length) r.extension = ext;
   r.note = [{ text: sentence({ ...state, mode: "clinician" }, ctx).text }];
   return r;
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Several findings at once (a list, e.g. after a fall: arm, hand and head)
+// ---------------------------------------------------------------------------------------------------
+
+/** One SNOMED expression per finding, separated by a blank line. */
+export function expressionMany(states, ctx) {
+  return states.map((s) => expression(s, ctx)).join("\n\n");
+}
+
+/** One COMPOSITION with one OBSERVATION per finding. unmapped entries say which finding they belong to. */
+export function openEhrMany(states, ctx, opts = {}) {
+  const rs = states.map((s) => openEhr(s, ctx, opts));
+  if (!rs.length) return { composition: null, unmapped: [] };
+  const composition = { ...rs[0].composition, content: rs.flatMap((r) => r.composition.content) };
+  const unmapped = rs.flatMap((r, i) => r.unmapped.map((u) => ({ ...u, key: `${states[i].finding.code} ${u.key}` })));
+  return { composition, unmapped };
+}
+
+/** FHIR Bundle (collection) of Conditions, ids demo-condition-1 ... */
+export function fhirBundle(states, ctx, opts = {}) {
+  return {
+    resourceType: "Bundle", type: "collection",
+    entry: states.map((s, i) => { const id = `demo-condition-${i + 1}`; return { fullUrl: `urn:demo:${id}`, resource: fhirCondition(s, ctx, { ...opts, id }) }; }),
+  };
+}
+
+/** Every code the list relies on, once per role and code. */
+export function codesUsedMany(states, ctx) {
+  const seen = new Set();
+  const rows = [];
+  for (const s of states) for (const r of codesUsed(s, ctx)) {
+    const k = r.role + ":" + r.code;
+    if (!seen.has(k)) { seen.add(k); rows.push({ ...r, finding: s.finding }); }
+  }
+  return rows;
 }

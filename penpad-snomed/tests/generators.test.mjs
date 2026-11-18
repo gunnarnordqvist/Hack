@@ -109,3 +109,28 @@ test("an aspect without a body site is ignored", () => {
   assert.doesNotMatch(sentence(s, ctx).text, /framsidan/);
   assert.doesNotMatch(expression(s, ctx), /aspect/);
 });
+
+test("a list of findings: one expression each, one composition with an observation each, a FHIR Bundle, codes once", async () => {
+  const { expressionMany, openEhrMany, fhirBundle, codesUsedMany } = await import("../web/generators.js");
+  const a = thumbState();
+  const b = thumbState({ values: { laterality: "24028007", aspect: "255549009" }, duration: null });
+  b.finding = { code: "25064002", en: "headache", sv: "huvudvärk", topic: "pain", site: null };
+  const states = [a, b];
+  assert.equal(expressionMany(states, ctx).split("\n\n").length, 2);
+  assert.match(expressionMany(states, ctx), /300955002 \|thumb ache\|[\s\S]*25064002 \|headache\|/);
+  const oe = openEhrMany(states, ctx, { time: T });
+  assert.equal(oe.composition.content.length, 2);
+  assert.equal(oe.composition.content.every((c) => c._type === "OBSERVATION"), true);
+  assert.ok(oe.unmapped.every((u) => /^\d+ /.test(u.key)));
+  const fb = fhirBundle(states, ctx, { time: T });
+  assert.equal(fb.type, "collection");
+  assert.deepEqual(fb.entry.map((e) => e.resource.id), ["demo-condition-1", "demo-condition-2"]);
+  assert.deepEqual(fb.entry.map((e) => e.resource.code.coding[0].code), ["300955002", "25064002"]);
+  const rows = codesUsedMany([a, a], ctx);
+  assert.equal(rows.length, codesUsedMany([a], ctx).length);
+  assert.equal(openEhrMany([], ctx).composition, null);
+});
+
+test("a single FHIR Condition keeps its usual id", () => {
+  assert.equal(fhirCondition(thumbState(), ctx, { time: T }).id, "demo-condition");
+});
