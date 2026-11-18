@@ -35,16 +35,24 @@ async function get(path, params) {
 
 const langParams = (lang) => (lang === "sv" ? { "system-version": `${SCT}|${SWEDEN}`, displayLanguage: "sv" } : {});
 
+/** All names of a concept in an expansion entry, without the semantic tag ("(finding)"). */
+function synonyms(c) {
+  const out = new Set([c.display]);
+  for (const d of c.designation || []) if (d.value) out.add(d.value.replace(/\s*\((finding|disorder|symptom)\)$/i, ""));
+  return [...out];
+}
+
 /** ValueSet/$expand on an implicit SNOMED CT ECL value set -> {total, items:[{code,display}]} */
-export async function expand(ecl, { filter, lang = "en", count = 200, offset = 0 } = {}) {
+export async function expand(ecl, { filter, lang = "en", count = 200, offset = 0, designations = false } = {}) {
   // the network boundary: text that looks like a personal identifier is never sent
   if (filter && personalDataReason(filter)) throw new TxError(PERSONAL_DATA_ERROR);
   const p = { url: `${SCT}?fhir_vs=ecl/${ecl}`, count: String(count), offset: String(offset), ...langParams(lang) };
   if (filter) p.filter = filter;
+  if (designations) p.includeDesignations = "true"; // synonyms too: the server's text filter matches them, so the ranking should see them
   const j = await get("ValueSet/$expand", p);
   if (j.resourceType !== "Parameters" && j.resourceType !== "ValueSet") throw new TxError(j.issue?.[0]?.diagnostics || "expand failed");
   const e = j.expansion || {};
-  return { total: e.total ?? (e.contains || []).length, items: (e.contains || []).map((c) => ({ code: c.code, display: c.display })) };
+  return { total: e.total ?? (e.contains || []).length, items: (e.contains || []).map((c) => ({ code: c.code, display: c.display, ...(designations ? { names: synonyms(c) } : {}) })) };
 }
 
 /** Labels (English and Swedish) for a list of codes in two requests. */
