@@ -32,3 +32,12 @@ test("filler words are dropped from what is sent to the terminology server", asy
   assert.equal(contentWords("ont i tummen"), "ont tummen");
   assert.equal(contentWords("in the"), "");
 });
+
+test("everyday pain words become the word the terms use", async () => {
+  const { normalizeSymptoms } = await import("../web/lexrank.js");
+  assert.equal(normalizeSymptoms("my thumb hurts"), "my thumb pain");
+  assert.equal(normalizeSymptoms("knee aching"), "knee pain");
+  assert.equal(normalizeSymptoms("ont i magen"), "smärta i magen");
+  assert.equal(normalizeSymptoms("halsont"), "halsont");
+  assert.equal(normalizeSymptoms("huvudvärk"), "huvudvärk");
+});

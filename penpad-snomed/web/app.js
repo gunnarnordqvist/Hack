@@ -4,7 +4,7 @@
 
 import { extract, buildPhrases } from "./extract.js";
 import { sentence, expression, openEhr, fhirCondition, codesUsed, term } from "./generators.js";
-import { rankLexical, lexScore, contentWords } from "./lexrank.js";
+import { rankLexical, lexScore, contentWords, normalizeSymptoms } from "./lexrank.js";
 import { drawBodyMap, ZOOMABLE, mainViewFor, drawnIn, sideOfCode, mentionsSide } from "./bodymap.js";
 import * as TX from "./txclient.js";
 import { personalDataReason, PERSONAL_DATA_ERROR } from "./guard.js";
@@ -181,11 +181,16 @@ async function init() {
 }
 
 /** Candidates straight from the server: its text filter in English and Swedish, ranked by token overlap. No model. */
-async function clientCandidates(q, k = 5) {
+async function clientCandidates(q0, k = 5) {
+  // The words as typed AND with everyday pain words replaced ("hurts" -> "pain"): some terms contain the typed word
+  // ("ont i halsen" is a name of sore throat), others only the standard one.
+  const variants = [...new Set([q0, normalizeSymptoms(q0)])];
   const calls = [];
-  const words = contentWords(q) || q; // filler words ("in", "the", "i", "på") make the server's text filter match far too much
-  for (const tp of S.snap.cfg.topics) for (const lang of ["en", "sv"]) {
-    calls.push(TX.expand(tp.ecl, { filter: words, lang, count: 40, designations: true }).then((r) => ({ tp, lang, r })).catch(() => null));
+  for (const v of variants) {
+    const words = contentWords(v) || v; // filler words ("in", "the", "i", "på") make the server's text filter match far too much
+    for (const tp of S.snap.cfg.topics) for (const lang of ["en", "sv"]) {
+      calls.push(TX.expand(tp.ecl, { filter: words, lang, count: 40, designations: true }).then((r) => ({ tp, lang, r })).catch(() => null));
+    }
   }
   const got = (await Promise.all(calls)).filter(Boolean);
   if (!got.length) throw new TX.TxError("no answer");
@@ -200,7 +205,7 @@ async function clientCandidates(q, k = 5) {
   const boost = Math.min(0.3, 0.3 / Math.max(1, by.size));
   const rows = [...by.values()].map((e) => {
     if (e.sv === e.en) e.sv = null;
-    const lex = Math.max(e.en ? lexScore(q, e.en) : 0, e.sv ? lexScore(q, e.sv) : 0, ...e.names.map((n) => lexScore(q, n)));
+    const lex = Math.max(...variants.map((v) => Math.max(e.en ? lexScore(v, e.en) : 0, e.sv ? lexScore(v, e.sv) : 0, ...e.names.map((n) => lexScore(v, n)))));
     const score = lex + 0.25 + boost + 0.08 * (1 - e.srv);
     return { ...e, score: +score.toFixed(4), confidence: +Math.min(1, score).toFixed(3), scores: { filter: true, lex: +lex.toFixed(3), emb: null } };
   });
@@ -215,7 +220,7 @@ async function clientCandidates(q, k = 5) {
   }
   for (const r of top) S.known.set(r.code, [r.code, r.en, r.sv, r.topic]);
   const items = top.filter(inLang).slice(0, k).map((r, i) => ({ ...r, rank: i + 1 }));
-  return { query: q, mode: "text", items, low_confidence: !items.length || items[0].score < 0.45, model: null, threshold: 0.45 };
+  return { query: q0, mode: "text", items, low_confidence: !items.length || items[0].score < 0.45, model: null, threshold: 0.45 };
 }
 
 async function candidatesFor(rest, rawText) {

@@ -72,7 +72,7 @@ All of this was run, see `tests/`.
   Server: HL7 Nordics `tx-nordics.fhir.org`, SNOMED CT International 20260801, Swedish module 20260531.
 - **Swedish terms are real SNOMED CT** (Swedish module via `displayLanguage=sv`), not translations of ours. Where the module has
   no term the English term is shown and the UI says so.
-- **Tests:** 37 JavaScript (`node --test tests/*.test.mjs`), 28 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 35
+- **Tests:** 38 JavaScript (`node --test tests/*.test.mjs`), 28 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 36
   browser checks run in **each of the modes** (`node tests/e2e.cjs <url> <dir>`, needs Playwright; set `HTTPS_PROXY` if
   outbound HTTPS needs a proxy). The unit tests use neutral fixture labels in our own words, not SNOMED terms.
 - **Candidate finder, own check on 14 phrases** (`backend/eval_candidates.py`, **our own labels, not a benchmark**; the

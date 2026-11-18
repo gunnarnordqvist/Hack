@@ -137,6 +137,16 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   const chipCount = (await page.$$("#samples .chip")).length;
   const enExamples = await page.evaluate(() => window.__penpad.snap.cfg.examples.filter((e) => e.lang === "en").length);
   check("English UI: only English examples are offered", chipCount === enExamples && chipCount > 0, `chips=${chipCount}`);
+  // every English example must lead to a finding (one was found to say "No confident match")
+  const failedExamples = [];
+  for (let i = 0; i < chipCount; i++) {
+    await page.evaluate(() => { window.__penpad.finding = null; });
+    const chip = (await page.$$("#samples .chip"))[i];
+    const label = await chip.textContent();
+    await chip.click();
+    try { await page.waitForFunction(() => window.__penpad.finding, null, { timeout: 60000 }); } catch (_) { failedExamples.push(label); }
+  }
+  check("English UI: every example gives a finding", failedExamples.length === 0, failedExamples.join(" | "));
   await page.click('.bm .part[data-region="knee"][data-side="right"] path >> nth=0');
   await page.waitForSelector(".mapitem", { timeout: 60000 });
   const mapNames = await page.$$eval(".mapitem span:first-child", (n) => n.map((x) => x.textContent));
