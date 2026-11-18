@@ -162,4 +162,4 @@ Built under the practices of the book *Vibe to Dev* (vibetodev.geon.se). Tier A:
 `dependency-policy.yaml`, `CHANGELOG.md`. Checks: `tools/scan_secrets.py`, `tools/check_dependencies.py`, `tools/check_spec.py`.
 Optional environment variables for the local server: `PENPAD_TX` (terminology server), `PENPAD_CACHE`, `PENPAD_OFFLINE`, `PENPAD_MODEL`.
 
-Contact: Gunnar Nordqvist, books.geon.se. TODO: add the GitHub and LinkedIn links before submitting; no email address is published.
+Contact: Gunnar Nordqvist · [GitHub](https://github.com/gunnarnordqvist) · [LinkedIn](https://www.linkedin.com/in/gunnarnordqvist) · [books.geon.se](https://books.geon.se). No email address is published.

@@ -1,6 +1,6 @@
 # PEN&PAD terminology-driven input (SNOMED CT, openEHR, FHIR)
 
-**Author:** Gunnar Nordqvist · [GitHub](https://github.com/gunnarnordqvist) · [books.geon.se](https://books.geon.se)
+**Author:** Gunnar Nordqvist · [GitHub](https://github.com/gunnarnordqvist) · [LinkedIn](https://www.linkedin.com/in/gunnarnordqvist) · [books.geon.se](https://books.geon.se)
 **Live demo:** https://gunnarnordqvist.github.io/Hack/ · **Source:** https://github.com/gunnarnordqvist/Hack/tree/main/penpad-snomed
 
 ## Idea
