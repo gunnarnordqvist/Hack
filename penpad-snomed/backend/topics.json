@@ -1166,7 +1166,513 @@
       "abdomen",
       "back",
       "head"
-    ]
+    ],
+    "words": [
+      {
+        "regions": [
+          "head"
+        ],
+        "sv": [
+          "huvud",
+          "huvudet"
+        ],
+        "en": [
+          "head"
+        ]
+      },
+      {
+        "regions": [
+          "eye"
+        ],
+        "sv": [
+          "öga",
+          "ögat",
+          "ögon",
+          "ögonen"
+        ],
+        "en": [
+          "eye",
+          "eyes"
+        ]
+      },
+      {
+        "regions": [
+          "ear"
+        ],
+        "sv": [
+          "öra",
+          "örat",
+          "öron",
+          "öronen"
+        ],
+        "en": [
+          "ear",
+          "ears"
+        ]
+      },
+      {
+        "regions": [
+          "nose"
+        ],
+        "sv": [
+          "näsa",
+          "näsan"
+        ],
+        "en": [
+          "nose"
+        ]
+      },
+      {
+        "regions": [
+          "mouth"
+        ],
+        "sv": [
+          "mun",
+          "munnen"
+        ],
+        "en": [
+          "mouth"
+        ]
+      },
+      {
+        "regions": [
+          "throat"
+        ],
+        "sv": [
+          "svalg",
+          "svalget",
+          "hals",
+          "halsen"
+        ],
+        "en": [
+          "throat"
+        ]
+      },
+      {
+        "regions": [
+          "neck"
+        ],
+        "sv": [
+          "nacke",
+          "nacken"
+        ],
+        "en": [
+          "neck"
+        ]
+      },
+      {
+        "regions": [
+          "chest"
+        ],
+        "sv": [
+          "bröst",
+          "bröstet",
+          "bröstkorg",
+          "bröstkorgen"
+        ],
+        "en": [
+          "chest"
+        ]
+      },
+      {
+        "regions": [
+          "abdomen"
+        ],
+        "sv": [
+          "mage",
+          "magen",
+          "buk",
+          "buken",
+          "mage"
+        ],
+        "en": [
+          "abdomen",
+          "belly",
+          "stomach",
+          "tummy"
+        ]
+      },
+      {
+        "regions": [
+          "back"
+        ],
+        "sv": [
+          "rygg",
+          "ryggen"
+        ],
+        "en": [
+          "back"
+        ]
+      },
+      {
+        "regions": [
+          "buttock"
+        ],
+        "sv": [
+          "skinka",
+          "skinkan",
+          "skinkor"
+        ],
+        "en": [
+          "buttock",
+          "buttocks"
+        ]
+      },
+      {
+        "regions": [
+          "shoulder"
+        ],
+        "sv": [
+          "axel",
+          "axeln",
+          "axlar",
+          "axlarna"
+        ],
+        "en": [
+          "shoulder",
+          "shoulders"
+        ]
+      },
+      {
+        "regions": [
+          "upperarm",
+          "forearm",
+          "elbow"
+        ],
+        "sv": [
+          "arm",
+          "armen",
+          "armar",
+          "armarna"
+        ],
+        "en": [
+          "arm",
+          "arms"
+        ]
+      },
+      {
+        "regions": [
+          "upperarm"
+        ],
+        "sv": [
+          "överarm",
+          "överarmen"
+        ],
+        "en": [
+          "upper arm"
+        ]
+      },
+      {
+        "regions": [
+          "elbow"
+        ],
+        "sv": [
+          "armbåge",
+          "armbågen"
+        ],
+        "en": [
+          "elbow"
+        ]
+      },
+      {
+        "regions": [
+          "forearm"
+        ],
+        "sv": [
+          "underarm",
+          "underarmen"
+        ],
+        "en": [
+          "forearm"
+        ]
+      },
+      {
+        "regions": [
+          "wrist"
+        ],
+        "sv": [
+          "handled",
+          "handleden"
+        ],
+        "en": [
+          "wrist"
+        ]
+      },
+      {
+        "regions": [
+          "hand",
+          "thumb",
+          "fingers",
+          "wrist"
+        ],
+        "sv": [
+          "hand",
+          "handen",
+          "händer",
+          "händerna"
+        ],
+        "en": [
+          "hand",
+          "hands"
+        ]
+      },
+      {
+        "regions": [
+          "thumb"
+        ],
+        "sv": [
+          "tumme",
+          "tummen"
+        ],
+        "en": [
+          "thumb"
+        ]
+      },
+      {
+        "regions": [
+          "fingers"
+        ],
+        "sv": [
+          "finger",
+          "fingret",
+          "fingrar",
+          "fingrarna"
+        ],
+        "en": [
+          "finger",
+          "fingers"
+        ]
+      },
+      {
+        "regions": [
+          "hip"
+        ],
+        "sv": [
+          "höft",
+          "höften"
+        ],
+        "en": [
+          "hip"
+        ]
+      },
+      {
+        "regions": [
+          "thigh"
+        ],
+        "sv": [
+          "lår",
+          "låret"
+        ],
+        "en": [
+          "thigh"
+        ]
+      },
+      {
+        "regions": [
+          "knee"
+        ],
+        "sv": [
+          "knä",
+          "knät"
+        ],
+        "en": [
+          "knee"
+        ]
+      },
+      {
+        "regions": [
+          "lowerleg"
+        ],
+        "sv": [
+          "underben",
+          "underbenet"
+        ],
+        "en": [
+          "lower leg",
+          "shin",
+          "calf"
+        ]
+      },
+      {
+        "regions": [
+          "ankle"
+        ],
+        "sv": [
+          "fotled",
+          "fotleden"
+        ],
+        "en": [
+          "ankle"
+        ]
+      },
+      {
+        "regions": [
+          "foot",
+          "toes",
+          "ankle"
+        ],
+        "sv": [
+          "fot",
+          "foten",
+          "fötter",
+          "fötterna"
+        ],
+        "en": [
+          "foot",
+          "feet"
+        ]
+      },
+      {
+        "regions": [
+          "toes"
+        ],
+        "sv": [
+          "tå",
+          "tån",
+          "tår",
+          "tårna"
+        ],
+        "en": [
+          "toe",
+          "toes"
+        ]
+      },
+      {
+        "regions": [
+          "thigh",
+          "knee",
+          "lowerleg",
+          "ankle",
+          "foot",
+          "toes",
+          "hip"
+        ],
+        "sv": [
+          "ben",
+          "benet",
+          "benen"
+        ],
+        "en": [
+          "leg",
+          "legs"
+        ]
+      }
+    ],
+    "compounds": [
+      {
+        "word": "huvudvärk",
+        "regions": [
+          "head"
+        ],
+        "lang": "sv"
+      },
+      {
+        "word": "headache",
+        "regions": [
+          "head"
+        ],
+        "lang": "en"
+      },
+      {
+        "word": "magont",
+        "regions": [
+          "abdomen"
+        ],
+        "lang": "sv"
+      },
+      {
+        "word": "buksmärta",
+        "regions": [
+          "abdomen"
+        ],
+        "lang": "sv"
+      },
+      {
+        "word": "stomachache",
+        "regions": [
+          "abdomen"
+        ],
+        "lang": "en"
+      },
+      {
+        "word": "halsont",
+        "regions": [
+          "throat"
+        ],
+        "lang": "sv"
+      },
+      {
+        "word": "ryggvärk",
+        "regions": [
+          "back"
+        ],
+        "lang": "sv"
+      },
+      {
+        "word": "backache",
+        "regions": [
+          "back"
+        ],
+        "lang": "en"
+      },
+      {
+        "word": "tandvärk",
+        "regions": [
+          "teeth"
+        ],
+        "lang": "sv"
+      },
+      {
+        "word": "toothache",
+        "regions": [
+          "teeth"
+        ],
+        "lang": "en"
+      }
+    ],
+    "aliases": [
+      {
+        "phrase": "ont i huvudet",
+        "query": "huvudvärk"
+      },
+      {
+        "phrase": "pain in the head",
+        "query": "headache"
+      },
+      {
+        "phrase": "ont i magen",
+        "query": "magont"
+      },
+      {
+        "phrase": "pain in the stomach",
+        "query": "stomachache"
+      },
+      {
+        "phrase": "pain in the belly",
+        "query": "stomachache"
+      },
+      {
+        "phrase": "ont i ryggen",
+        "query": "ryggvärk"
+      },
+      {
+        "phrase": "pain in the back",
+        "query": "backache"
+      },
+      {
+        "phrase": "ont i tänderna",
+        "query": "tandvärk"
+      },
+      {
+        "phrase": "pain in the teeth",
+        "query": "toothache"
+      },
+      {
+        "phrase": "pain in the tooth",
+        "query": "toothache"
+      }
+    ],
+    "aliasNote": "Everyday phrases that name a finding of their own (ont i huvudet = huvudvärk). Our own unreviewed list; the query must be a word in bodymap.compounds."
   },
   "examples": [
     {

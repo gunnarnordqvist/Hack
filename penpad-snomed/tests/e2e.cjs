@@ -226,6 +226,25 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.click("#clear-list");
   check("clearing the list", (await page.evaluate(() => window.__penpad.chart.length)) === 0 && (await page.$$(".chartlist li")).length === 0);
 
+  // 6g. several body parts in one sentence: each part is checked against its own body part and keeps its own values
+  await page.fill("#text", "ont i höger arm och vänster hand, huvudet sedan igår");
+  await page.click("#go");
+  await page.waitForFunction(() => window.__penpad.multi && window.__penpad.multi.items.length === 3 && window.__penpad.multi.items.every((i) => i.status !== "resolving"), null, { timeout: 90000 });
+  const mi = await page.evaluate(() => window.__penpad.multi.items.map((i) => ({ status: i.status, lat: i.entry && i.entry.values.laterality, site: i.entry && i.entry.finding.site && i.entry.finding.site.en, dur: i.entry && i.entry.duration && i.entry.duration.n })));
+  check("one sentence, three body parts: every proposal is found", mi.length === 3 && mi.every((x) => x.status === "ok"), JSON.stringify(mi));
+  check("each body part keeps its own side", mi[0].lat === "24028007" && mi[1].lat === "7771000" && !mi[2].lat, JSON.stringify(mi.map((x) => x.lat)));
+  check("each finding's site is inside its own body part", /arm|elbow/i.test(mi[0].site) && /hand/i.test(mi[1].site) && /head/i.test(mi[2].site), mi.map((x) => x.site).join(" | "));
+  check("a time word said once is shared", mi.every((x) => x.dur === 1));
+  await page.click("#add-all");
+  check("add all puts the three findings in the list", (await page.evaluate(() => window.__penpad.chart.length)) === 3 && !(await page.$("#multi-note")));
+  await page.click("#clear-list");
+  // one typed finding that names a body part: its site must be inside that body part
+  await page.fill("#text", "ont i handen");
+  await page.click("#go");
+  await page.waitForFunction(() => window.__penpad.cand && window.__penpad.cand.part && window.__penpad.finding, null, { timeout: 90000 });
+  const handSite = await page.evaluate(() => window.__penpad.finding.site && window.__penpad.finding.site.en);
+  check("'ont i handen' finds a finding whose site is in the hand", /hand/i.test(handSite || ""), String(handSite));
+
   // 7. another sample: swelling of the right foot (hard)
   await page.click('.chip:has-text("svullen höger fot")');
   await page.waitForFunction(() => window.__penpad.finding && window.__penpad.finding.topic === "swelling", null, { timeout: 60000 });
