@@ -23,6 +23,8 @@ def all_codes(cfg: dict) -> set[str]:
     codes.update(cfg["meta"]["attributes"].values())
     codes.update(t["focus"] for t in cfg["topics"])
     codes.add(cfg["meta"]["refsets"]["lateralizable"])
+    for r in cfg.get("bodymap", {}).get("regions", []):
+        codes.update(r["codes"])
     return codes
 
 
@@ -60,6 +62,12 @@ def verify(tx: Tx, cfg: dict):
         for sname in t["slots"]:
             if sname not in cfg["slots"]:
                 problems.append(f"topic {t['id']}: unknown slot {sname}")
+    for r in cfg.get("bodymap", {}).get("regions", []):
+        for c in r["codes"]:
+            ok = bool(labels[c]["en"]) and not labels[c]["inactive"]
+            report.append(f"{'ok ' if ok else 'BAD'} region {r['id']:9} {c:>11} {labels[c]['en']}")
+            if not ok:
+                problems.append(f"region {r['id']}: {c} unknown or inactive")
     for u in cfg["units"]:
         report.append(f"ok  unit {u['key']:7} {u['code']:>11} {labels[u['code']]['en']}")
     return report, problems, labels

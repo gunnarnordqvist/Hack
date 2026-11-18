@@ -20,12 +20,17 @@ def strip_modules(src: str) -> str:
     src = re.sub(r"^export\s+(async\s+)?(function|const|let)\b", r"\1\2", src, flags=re.M)
     return src
 
-js = "\n".join(strip_modules((WEB / f).read_text(encoding="utf8")) for f in ["extract.js", "generators.js", "lexrank.js", "app.js"])
+js = "\n".join(strip_modules((WEB / f).read_text(encoding="utf8")) for f in ["extract.js", "generators.js", "lexrank.js", "bodymap.js", "app.js"])
 css = (WEB / "style.css").read_text(encoding="utf8")
 body = """<main class="app">
   <header id="hdr"></header>
-  <section id="input" class="card"></section>
-  <section id="cands" class="card"></section>
+  <div class="topgrid">
+    <section id="map" class="card"></section>
+    <div id="stack" class="stack">
+      <section id="input" class="card"></section>
+      <section id="cands" class="card"></section>
+    </div>
+  </div>
   <div class="two">
     <section id="form" class="card"></section>
     <section id="confirm" class="card"></section>

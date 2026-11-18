@@ -11,7 +11,7 @@ result as a plain sentence, a post-coordinated SNOMED CT expression, an openEHR 
 
 | Step | What happens here |
 |---|---|
-| **Target** | Free text (Swedish or English) is read for side, duration, severity and so on; the rest is matched to a finding. |
+| **Target** | Free text (Swedish or English) is read for side, duration, severity and so on; the rest is matched to a finding. Or **point at the body**: a front and back figure with close-ups of hand, foot and head (as on the demo's Topics tab) lists the findings for the chosen site, and the side you click becomes the patient's side. |
 | **Refine** | Options per question come from the terminology server as **ECL value sets**. Side is offered only for body structures in the SNOMED CT reference set *lateralizable body structure*. A short list of quick choices has a visible **"more…"** cue. |
 | **Validate** | A sentence generator writes the choices back ("Is this what you meant?"). Every code is checked against the server. |
 
@@ -51,8 +51,8 @@ All of this was run, see `tests/` and `docs/`.
   20260801, Swedish module 20260531.
 - **Swedish terms are real SNOMED CT** (Swedish module via `displayLanguage=sv`), not translations of ours. Where the module
   has no term (e.g. *Rapid onset*) the English term is shown and the UI says so.
-- **Tests:** 17 JavaScript (`node --test tests/*.test.mjs`), 11 Python (`python -m unittest tests/test_backend.py`),
-  18 browser checks in static and in live mode (`node tests/e2e.cjs <url> <dir>`, needs Playwright).
+- **Tests:** 23 JavaScript (`node --test tests/*.test.mjs`), 13 Python (`python -m unittest tests/test_backend.py`),
+  26 browser checks in static and in live mode (`node tests/e2e.cjs <url> <dir>`, needs Playwright).
 - **Candidate finder, own check on 14 phrases** (`docs/eval-candidates.json`, **our own labels, not a benchmark**; the
   confidence threshold was tuned after looking at one of these phrases):
 
@@ -64,6 +64,17 @@ All of this was run, see `tests/` and `docs/`.
 The server's own text filter finds Swedish only through the Swedish module and matches loosely; the model helps with
 colloquial and compound words ("ont i tummen", "ryggont"). It fails on some ("magont" is only a low-confidence guess), and
 the UI then says **low confidence** and offers a manual search.
+
+## The body map
+
+The figure and the close-ups are **our own drawing** (nothing from the Clinergy demo). Which findings belong to a region is
+decided by SNOMED CT, not by the drawing: a finding is listed for a region when its **finding site** is that structure or one of
+its descendants (is-a), e.g. *Pain in thumb* is listed for thumb, hand and upper limb. The chosen finding is highlighted on the
+body (amber), with the side taken from the laterality answer; pointing at the body (teal) and clicking a finding in the list sets
+laterality from the clicked side, and that explicit side wins over a side that was only in the typed text.
+27 regions are defined in `backend/topics.json` (`bodymap`); every region code is verified against the server, which already
+caught one inactive concept. Of the 1,314 findings that have a finding site, 748 fall into at least one drawn region; the rest
+have a non-regional site (skin, muscle, nerve ...) and are reached by text or the search box.
 
 ## Outputs
 
@@ -88,7 +99,7 @@ the UI then says **low confidence** and offers a manual search.
 
 ## Limits
 
-- Two topics (pain, swelling), one language pair, no body map, no speech, no saving. The confirmation can be edited by changing
+- Two topics (pain, swelling), one language pair, a schematic body map (no body-system icon row), no speech, no saving. The confirmation can be edited by changing
   any answer; whether it should be final is an open question.
 - Clinical choices (which options are "quick", the Swedish synonym lists, the patient wording) are ours and unreviewed.
 - The snapshot is a copy of SNOMED CT content; follow your SNOMED CT licence terms if you reuse it. BioLORD-2023-M has its
@@ -100,7 +111,7 @@ the UI then says **low confidence** and offers a manual search.
 
 ```
 backend/   tx.py (FHIR client, disk cache)  rank.py (candidates)  verify_topics.py  build_snapshot.py  server.py  topics.json
-web/       index.html  app.js  extract.js (free text -> slots)  generators.js  lexrank.js  data/snapshot.json
+web/       index.html  app.js  extract.js (free text -> slots)  generators.js  lexrank.js  bodymap.js  data/snapshot.json
 tests/     *.test.mjs  test_backend.py  e2e.cjs
 docs/      eval-candidates.json
 ```

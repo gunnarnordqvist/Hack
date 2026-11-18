@@ -658,5 +658,358 @@
         "swelling": "The swelling feels {x}."
       }
     }
+  },
+  "bodymap": {
+    "note": "Regions are our own drawing; membership of a finding is decided by the SNOMED CT hierarchy: a finding belongs to a region when its finding site is that structure or a descendant (is-a).",
+    "regions": [
+      {
+        "id": "head",
+        "label": {
+          "sv": "Huvud",
+          "en": "Head"
+        },
+        "codes": [
+          "69536005"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "eye",
+        "label": {
+          "sv": "Öga",
+          "en": "Eye"
+        },
+        "codes": [
+          "81745001"
+        ],
+        "sided": true,
+        "parent": "head"
+      },
+      {
+        "id": "ear",
+        "label": {
+          "sv": "Öra",
+          "en": "Ear"
+        },
+        "codes": [
+          "117590005"
+        ],
+        "sided": true,
+        "parent": "head"
+      },
+      {
+        "id": "nose",
+        "label": {
+          "sv": "Näsa",
+          "en": "Nose"
+        },
+        "codes": [
+          "45206002"
+        ],
+        "sided": false,
+        "parent": "head"
+      },
+      {
+        "id": "mouth",
+        "label": {
+          "sv": "Mun",
+          "en": "Mouth"
+        },
+        "codes": [
+          "123851003",
+          "74262004"
+        ],
+        "sided": false,
+        "parent": "head"
+      },
+      {
+        "id": "throat",
+        "label": {
+          "sv": "Svalg",
+          "en": "Throat"
+        },
+        "codes": [
+          "54066008",
+          "312535008"
+        ],
+        "sided": false,
+        "parent": "neck"
+      },
+      {
+        "id": "neck",
+        "label": {
+          "sv": "Hals",
+          "en": "Neck"
+        },
+        "codes": [
+          "45048000"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "chest",
+        "label": {
+          "sv": "Bröstkorg",
+          "en": "Chest"
+        },
+        "codes": [
+          "51185008"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "abdomen",
+        "label": {
+          "sv": "Buk",
+          "en": "Abdomen"
+        },
+        "codes": [
+          "818983003"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "pelvis",
+        "label": {
+          "sv": "Bäcken",
+          "en": "Pelvis"
+        },
+        "codes": [
+          "12921003"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "back",
+        "label": {
+          "sv": "Rygg",
+          "en": "Back"
+        },
+        "codes": [
+          "77568009",
+          "421060004"
+        ],
+        "sided": false,
+        "parent": null
+      },
+      {
+        "id": "buttock",
+        "label": {
+          "sv": "Skinka",
+          "en": "Buttock"
+        },
+        "codes": [
+          "46862004"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "shoulder",
+        "label": {
+          "sv": "Axel",
+          "en": "Shoulder"
+        },
+        "codes": [
+          "16982005"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "upperarm",
+        "label": {
+          "sv": "Överarm",
+          "en": "Upper arm"
+        },
+        "codes": [
+          "40983000"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "elbow",
+        "label": {
+          "sv": "Armbåge",
+          "en": "Elbow"
+        },
+        "codes": [
+          "127949000"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "forearm",
+        "label": {
+          "sv": "Underarm",
+          "en": "Forearm"
+        },
+        "codes": [
+          "14975008"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "wrist",
+        "label": {
+          "sv": "Handled",
+          "en": "Wrist"
+        },
+        "codes": [
+          "74670003"
+        ],
+        "sided": true,
+        "parent": "hand"
+      },
+      {
+        "id": "hand",
+        "label": {
+          "sv": "Hand",
+          "en": "Hand"
+        },
+        "codes": [
+          "85562004"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "thumb",
+        "label": {
+          "sv": "Tumme",
+          "en": "Thumb"
+        },
+        "codes": [
+          "76505004"
+        ],
+        "sided": true,
+        "parent": "hand"
+      },
+      {
+        "id": "fingers",
+        "label": {
+          "sv": "Fingrar",
+          "en": "Fingers"
+        },
+        "codes": [
+          "7569003"
+        ],
+        "sided": true,
+        "parent": "hand"
+      },
+      {
+        "id": "hip",
+        "label": {
+          "sv": "Höft",
+          "en": "Hip"
+        },
+        "codes": [
+          "29836001"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "thigh",
+        "label": {
+          "sv": "Lår",
+          "en": "Thigh"
+        },
+        "codes": [
+          "68367000"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "knee",
+        "label": {
+          "sv": "Knä",
+          "en": "Knee"
+        },
+        "codes": [
+          "72696002"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "lowerleg",
+        "label": {
+          "sv": "Underben",
+          "en": "Lower leg"
+        },
+        "codes": [
+          "30021000"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "ankle",
+        "label": {
+          "sv": "Fotled",
+          "en": "Ankle"
+        },
+        "codes": [
+          "344001"
+        ],
+        "sided": true,
+        "parent": "foot"
+      },
+      {
+        "id": "foot",
+        "label": {
+          "sv": "Fot",
+          "en": "Foot"
+        },
+        "codes": [
+          "56459004"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "toes",
+        "label": {
+          "sv": "Tår",
+          "en": "Toes"
+        },
+        "codes": [
+          "29707007"
+        ],
+        "sided": true,
+        "parent": "foot"
+      }
+    ],
+    "zooms": {
+      "hand": [
+        "wrist",
+        "hand",
+        "thumb",
+        "fingers"
+      ],
+      "foot": [
+        "ankle",
+        "foot",
+        "toes"
+      ],
+      "head": [
+        "head",
+        "eye",
+        "ear",
+        "nose",
+        "mouth",
+        "throat"
+      ]
+    }
   }
 }

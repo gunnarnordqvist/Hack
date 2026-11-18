@@ -4,13 +4,18 @@
 
 import { extract, buildPhrases } from "./extract.js";
 import { sentence, expression, openEhr, fhirCondition, codesUsed, term } from "./generators.js";
-import { rankLexical } from "./lexrank.js";
+import { rankLexical, lexScore } from "./lexrank.js";
+import { drawBodyMap, ZOOMABLE, mainViewFor, drawnIn, sideOfCode } from "./bodymap.js";
 
 const I = {
   sv: {
     title: "Smarta formulär med SNOMED CT",
     sub: "Skriv vad patienten har. Systemet föreslår ett begrepp, frågar bara det som är giltigt och bekräftar med en mening.",
     lang: "Språk", mode: "Läge", clinician: "Klinik", patient: "Patient",
+    mapTitle: "…eller peka på kroppen", front: "Fram", back: "Bak", toBody: "← Hela kroppen", location: "Plats",
+    mapHint: "Klicka på en kroppsdel. Hand, fot och huvud zoomar in. Sidan du klickar på blir patientens sida.",
+    findingsHere: "Fynd på vald plats", showMore: "Visa fler", all: "Alla", noFindings: "Inga fynd i listan för den här platsen.",
+    fromMap: "ifyllt från kroppskartan", sideL: "vänster", sideR: "höger", legendSel: "vald av dig", legendHl: "plats för valt fynd",
     s1: "1. Berätta", s2: "2. Förslag", s3: "3. Förfina", s4: "4. Stämmer det här?", s5: "5. Utdata",
     ph: "Till exempel: smärta i vänster tumme sedan två dagar, bultande",
     go: "Tolka", reset: "Börja om", tryThese: "Prova",
@@ -43,6 +48,10 @@ const I = {
     title: "Smart forms with SNOMED CT",
     sub: "Type what the patient has. The system proposes a concept, asks only what is valid and confirms with a sentence.",
     lang: "Language", mode: "Mode", clinician: "Clinician", patient: "Patient",
+    mapTitle: "…or point at the body", front: "Front", back: "Back", toBody: "← Whole body", location: "Site",
+    mapHint: "Click a body part. Hand, foot and head zoom in. The side you click becomes the patient's side.",
+    findingsHere: "Findings at the chosen site", showMore: "Show more", all: "All", noFindings: "No findings listed for this site.",
+    fromMap: "filled from the body map", sideL: "left", sideR: "right", legendSel: "chosen by you", legendHl: "site of the chosen finding",
     s1: "1. Tell", s2: "2. Suggestions", s3: "3. Refine", s4: "4. Is this what you meant?", s5: "5. Output",
     ph: "For example: pain in the left thumb for two days, throbbing",
     go: "Interpret", reset: "Start over", tryThese: "Try",
@@ -77,7 +86,9 @@ const S = {
   snap: null, live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
   finding: null, values: {}, prefilled: new Set(), duration: null, expanded: new Set(), confirmed: false,
   tab: "expr", validation: {}, manual: "", sampleHit: null,
+  map: { view: "front", main: "front", side: null, sel: null, topic: "all", more: false }, prefilledMap: new Set(),
 };
+const CODE_OF_SIDE = { left: "7771000", right: "24028007" };
 window.__penpad = S; // handle for tests and curious people
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -140,7 +151,7 @@ async function interpret() {
   S.confirmed = false;
   S.ex = extract(S.text, S.snap.cfg, S.snap.labels, S.phrases);
   S.cand = await candidatesFor(S.ex.rest, S.text);
-  S.finding = null; S.values = {}; S.prefilled = new Set(); S.duration = S.ex.duration; S.expanded = new Set();
+  S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = S.ex.duration; S.expanded = new Set();
   if (S.cand.items.length && !S.cand.low_confidence) selectFinding(S.cand.items[0].code, true);
   else render();
 }
@@ -151,7 +162,7 @@ function visibleSlots(f) {
   return topic.slots.filter((s) => s !== "laterality" || (f.site && f.site.lateralizable));
 }
 
-function selectFinding(code, fromText) {
+function selectFinding(code, fromText, fromMap) {
   const u = S.uniMap.get(code);
   if (!u) return;
   S.finding = { code, en: u[1], sv: u[2], topic: u[3], site: S.snap.details[code] || null };
@@ -161,6 +172,13 @@ function selectFinding(code, fromText) {
     for (const [slot, c] of Object.entries(S.ex.values)) if (vis.has(slot)) { S.values[slot] = c; S.prefilled.add(slot); }
     if (S.ex.duration) S.prefilled.add("duration");
   }
+  S.prefilledMap = new Set();
+  const sel = S.map.sel;
+  // pointing at the body is explicit: its side wins over a side that was only in the typed text
+  if (sel && sel.side && vis.has("laterality") && (fromMap || !S.values.laterality)) {
+    S.values.laterality = CODE_OF_SIDE[sel.side]; S.prefilled.add("laterality"); S.prefilledMap.add("laterality");
+  }
+  focusMapOn(S.finding);
   S.confirmed = false;
   render();
   if (S.live) validateAll();
@@ -179,7 +197,7 @@ async function validateAll() {
 // ------------------------------------------------------------------------------------------------ rendering
 function render() {
   document.documentElement.lang = S.lang;
-  renderHeader(); renderInput(); renderCandidates(); renderForm(); renderConfirm(); renderOutputs(); renderFoot();
+  renderHeader(); renderInput(); renderMap(); renderCandidates(); renderForm(); renderConfirm(); renderOutputs(); renderFoot();
 }
 
 function seg(label, options, current, on) {
@@ -212,7 +230,7 @@ function renderInput() {
     $("#text").addEventListener("input", (e) => { S.text = e.target.value; });
     $("#text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); interpret(); } });
     $("#go").addEventListener("click", () => interpret());
-    $("#rs").addEventListener("click", () => { S.text = ""; $("#text").value = ""; S.cand = null; S.finding = null; S.values = {}; S.duration = null; S.ex = null; render(); });
+    $("#rs").addEventListener("click", () => { S.text = ""; $("#text").value = ""; S.cand = null; S.finding = null; S.values = {}; S.duration = null; S.ex = null; S.map.sel = null; S.map.side = null; S.map.view = S.map.main; S.prefilledMap = new Set(); render(); });
   }
   $("#h-in").textContent = t("s1");
   $("#text").placeholder = t("ph");
@@ -221,6 +239,79 @@ function renderInput() {
   $("#notes").textContent = t("localNote");
   $("#samples").replaceChildren(h("span", { class: "seglabel" }, t("tryThese")),
     ...S.snap.samples.map((s) => h("button", { type: "button", class: "chip", onclick: () => { S.text = s.text; $("#text").value = s.text; interpret(); } }, s.text.length > 46 ? s.text.slice(0, 44) + "…" : s.text)));
+}
+
+// ------------------------------------------------------------------------------------------------ body map
+const regionInfo = (r) => S.snap.bodymap.regions.find((x) => x.id === r);
+const regionLabel = (r) => (regionInfo(r)?.label[S.lang]) || r;
+const sideLabel = (side) => (side === "left" ? t("sideL") : side === "right" ? t("sideR") : "");
+
+function currentHl() {
+  const f = S.finding;
+  const regs = f && f.site ? S.snap.bodymap.siteRegions[f.site.code] : null;
+  return regs && regs.length ? { region: regs[0], side: sideOfCode(S.values.laterality) } : null;
+}
+
+/** Show the part of the body where the chosen finding sits (switch front/back or leave a zoom if needed). */
+function focusMapOn(f) {
+  const regs = f && f.site ? S.snap.bodymap.siteRegions[f.site.code] : null;
+  if (!regs || !regs.length) return;
+  const M = S.map;
+  if (drawnIn(M.view, regs[0], M.side)) return;
+  const mv = mainViewFor(regs[0], M.main);
+  if (mv) { M.view = mv.view; M.main = mv.view; }
+}
+
+function onRegion(region, side) {
+  const M = S.map;
+  const sameSel = M.sel && M.sel.region === region && (M.sel.side || null) === (side || null);
+  if ((M.view === "front" || M.view === "back") && ZOOMABLE.has(region)) {
+    M.main = M.view; M.view = region; M.side = side; M.sel = { region, side }; M.more = false;
+  } else if (sameSel) { M.sel = null; }
+  else { M.sel = { region, side }; M.more = false; }
+  renderMap();
+}
+
+function mapFindings() {
+  const M = S.map;
+  if (!M.sel) return null;
+  const bm = S.snap.bodymap;
+  const codes = bm.findings[M.sel.region] || [];
+  const rest = S.ex && S.ex.rest;
+  const name = (u) => (S.lang === "sv" ? u[2] || u[1] : u[1]);
+  const rows = codes.map((c) => S.uniMap.get(c)).filter(Boolean).filter((u) => M.topic === "all" || u[3] === M.topic)
+    .map((u) => ({ u, score: rest ? Math.max(lexScore(rest, u[1]), u[2] ? lexScore(rest, u[2]) : 0) : 0 }));
+  rows.sort((a, b) => b.score - a.score || name(a.u).localeCompare(name(b.u), S.lang));
+  return rows;
+}
+
+function renderMap() {
+  const box = $("#map");
+  const M = S.map;
+  const zoom = M.view !== "front" && M.view !== "back";
+  box.replaceChildren(h("h2", {}, t("mapTitle")));
+  box.append(zoom
+    ? h("div", { class: "row tight" }, h("button", { type: "button", class: "ghost small", id: "bm-back", onclick: () => { M.view = M.main; renderMap(); } }, t("toBody")),
+        h("span", { class: "dim" }, regionLabel(M.view) + (M.side ? ", " + sideLabel(M.side) : "")))
+    : seg("", [["front", t("front")], ["back", t("back")]], M.view, (v) => { M.view = v; M.main = v; renderMap(); }));
+  const host = h("div", { class: "bmhost", id: "bmhost" });
+  box.append(host);
+  drawBodyMap(host, { view: M.view, side: M.side, sel: M.sel, hl: currentHl(), regionLabel, sideLabel }, { region: onRegion });
+  box.append(h("div", { class: "legend" }, h("span", { class: "sw sel" }), t("legendSel"), h("span", { class: "sw hl" }), t("legendHl")));
+  if (!M.sel) { box.append(h("p", { class: "hint" }, t("mapHint"))); return; }
+  box.append(h("div", { class: "loc" }, h("strong", {}, t("location") + ": "), regionLabel(M.sel.region) + (M.sel.side ? " (" + sideLabel(M.sel.side) + ")" : ""),
+    h("button", { type: "button", class: "ghost small", onclick: () => { M.sel = null; renderMap(); } }, "×")));
+  box.append(seg("", [["all", t("all")], ...S.snap.cfg.topics.map((x) => [x.id, x.label[S.lang]])], M.topic, (v) => { M.topic = v; M.more = false; renderMap(); }));
+  const rows = mapFindings();
+  box.append(h("h3", { class: "listh" }, `${t("findingsHere")} (${rows.length})`));
+  if (!rows.length) { box.append(h("p", { class: "hint" }, t("noFindings"))); return; }
+  const shown = rows.slice(0, M.more ? 60 : 10);
+  box.append(h("ul", { class: "maplist" }, shown.map(({ u }) => {
+    const on = S.finding && S.finding.code === u[0];
+    return h("li", {}, h("button", { type: "button", class: "mapitem" + (on ? " on" : ""), "data-code": u[0], onclick: () => selectFinding(u[0], !!S.ex, true) },
+      h("span", {}, S.lang === "sv" ? u[2] || u[1] : u[1]), h("span", { class: "mono dim" }, u[0])));
+  })));
+  if (rows.length > shown.length) box.append(h("button", { type: "button", class: "ghost small", onclick: () => { M.more = true; renderMap(); } }, `${t("showMore")} (+${rows.length - shown.length})`));
 }
 
 function bar(v) { return h("span", { class: "bar", "aria-hidden": "true" }, h("i", { style: `width:${Math.round(Math.min(1, v) * 100)}%` })); }
@@ -273,7 +364,7 @@ function slotBlock(slot) {
   const cfg = S.snap.cfg.slots[slot];
   const blk = h("div", { class: "slot", "data-slot": slot });
   const filled = S.prefilled.has(slot);
-  blk.append(h("div", { class: "slothead" }, h("span", { class: "slotname" }, cfg.label[S.lang]), filled ? h("span", { class: "tag" }, "✎ " + t("prefilled")) : null));
+  blk.append(h("div", { class: "slothead" }, h("span", { class: "slotname" }, cfg.label[S.lang]), filled ? h("span", { class: "tag" }, "✎ " + t(S.prefilledMap.has(slot) ? "fromMap" : "prefilled")) : null));
   if (cfg.kind === "duration") {
     const n = h("input", { type: "number", min: "1", max: "999", id: "dur-n", "aria-label": t("num"), value: S.duration ? S.duration.n : "" });
     const u = h("select", { id: "dur-u", "aria-label": t("unit") }, S.snap.cfg.units.map((x) => h("option", { value: x.key, selected: S.duration && S.duration.unit === x.key }, S.lang === "sv" ? x.svLabel[1] : x.en[1] || x.en[0])));
@@ -292,7 +383,7 @@ function slotBlock(slot) {
     const on = S.values[slot] === o.code;
     row.append(h("button", { type: "button", class: "opt" + (on ? " on" : ""), "aria-pressed": on ? "true" : "false", onclick: () => {
       if (on) delete S.values[slot]; else S.values[slot] = o.code;
-      S.prefilled.delete(slot); S.confirmed = false; renderForm(); renderConfirm(); renderOutputs(); if (S.live) validateAll();
+      S.prefilled.delete(slot); S.prefilledMap.delete(slot); S.confirmed = false; renderForm(); renderConfirm(); renderOutputs(); renderMap(); if (S.live) validateAll();
     } }, lab(o.code)));
   }
   if (extra.length) row.append(h("button", { type: "button", class: "opt more", "aria-expanded": open ? "true" : "false", onclick: () => { if (open) S.expanded.delete(slot); else S.expanded.add(slot); renderForm(); } }, open ? t("fewer") : `${t("more")} (+${extra.length})`));

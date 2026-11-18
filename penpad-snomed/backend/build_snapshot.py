@@ -88,6 +88,25 @@ def universe_details(tx: Tx, cfg: dict, ranker: Ranker) -> dict:
     return out, sorted(versions)
 
 
+def bodymap_data(tx: Tx, cfg: dict, details: dict) -> dict:
+    """Which findings belong to which body region (SNOMED is-a on the finding site) and the most specific
+    region of every finding site. Regions are expanded in full (some are large)."""
+    regions = cfg["bodymap"]["regions"]
+    sets = {}
+    for r in regions:
+        ecl = " OR ".join(f"<< {c}" for c in r["codes"])
+        sets[r["id"]] = {c["code"] for c in tx.expand_all(ecl, limit=60000)}
+    findings = {r["id"]: sorted(code for code, site in details.items() if site and site["code"] in sets[r["id"]]) for r in regions}
+    order = sorted(regions, key=lambda r: len(sets[r["id"]]))
+    sites = {s["code"] for s in details.values() if s}
+    site_regions = {site: [r["id"] for r in order if site in sets[r["id"]]] for site in sites}
+    site_regions = {k: v for k, v in site_regions.items() if v}
+    return {
+        "regions": [{"id": r["id"], "label": r["label"], "sided": r["sided"], "parent": r["parent"], "count": len(findings[r["id"]])} for r in regions],
+        "zooms": cfg["bodymap"]["zooms"], "findings": findings, "siteRegions": site_regions,
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-model", action="store_true", help="skip embedding re-rank for the samples")
@@ -108,6 +127,8 @@ def main():
     with_site = sum(1 for v in details.values() if v)
     print(f"details: {with_site}/{len(details)} concepts have a finding site")
 
+    bm = bodymap_data(tx, cfg, details)
+    print("body map:", {r["id"]: r["count"] for r in bm["regions"]})
     # free-text reader runs in node so the samples go through the exact browser code
     lab_file = ROOT / "cache" / "labels-for-extract.json"
     lab_file.parent.mkdir(exist_ok=True)
@@ -135,6 +156,7 @@ def main():
         "options": options,
         "universe": [[u["code"], u["en"], u["sv"], u["topic"]] for u in ranker.universe.values()],
         "details": details,
+        "bodymap": bm,
         "samples": samples,
         "eval": json.loads(ev.read_text())["summary"] if ev.exists() else None,
     }

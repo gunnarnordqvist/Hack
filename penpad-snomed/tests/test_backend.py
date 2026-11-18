@@ -86,3 +86,29 @@ class Ranking(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BodyMapConfig(unittest.TestCase):
+    def test_regions_unique_and_wired(self):
+        bm = CFG["bodymap"]
+        ids = [r["id"] for r in bm["regions"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        for r in bm["regions"]:
+            self.assertTrue(r["codes"] and all(c.isdigit() for c in r["codes"]), r["id"])
+            if r["parent"]:
+                self.assertIn(r["parent"], ids, f"{r['id']} parent")
+        for zoom, regs in bm["zooms"].items():
+            self.assertIn(zoom, ids)
+            for r in regs:
+                self.assertIn(r, ids, f"zoom {zoom}")
+
+    def test_snapshot_maps_thumb_pain_to_the_thumb(self):
+        f = HERE.parent / "web" / "data" / "snapshot.json"
+        if not f.exists():
+            self.skipTest("snapshot not built")
+        snap = json.loads(f.read_text(encoding="utf8"))
+        bm = snap["bodymap"]
+        self.assertIn("300955002", bm["findings"]["thumb"])
+        self.assertIn("300955002", bm["findings"]["hand"])  # a thumb finding is also a hand finding
+        self.assertNotIn("300955002", bm["findings"]["foot"])
+        self.assertEqual(bm["siteRegions"]["76505004"][0], "thumb")  # most specific region first
