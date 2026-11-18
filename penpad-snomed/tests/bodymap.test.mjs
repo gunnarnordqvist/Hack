@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { shapesFor, drawnIn, mainViewFor, sideOfCode, ZOOMABLE } from "../web/bodymap.js";
+import { shapesFor, drawnIn, mainViewFor, sideOfCode, mentionsSide, ZOOMABLE } from "../web/bodymap.js";
 import { BODY } from "../web/vendor/bodypaths.js";
 
 test("regions are drawn where the anatomy says", () => {
@@ -65,4 +65,13 @@ test("only the hand zooms; side codes map to left and right", () => {
   assert.equal(sideOfCode("7771000"), "left");
   assert.equal(sideOfCode("24028007"), "right");
   assert.equal(sideOfCode("51440002"), null);
+});
+
+test("a finding that names the other side is recognised, in English and Swedish", () => {
+  assert.equal(mentionsSide(["Joint pain in left hand", null], "left"), true);
+  assert.equal(mentionsSide(["Joint pain in left hand", null], "right"), false);
+  assert.equal(mentionsSide([null, "smärta i höger tumme"], "right"), true);
+  assert.equal(mentionsSide(["Pain in thumb", "smärta i tumme"], "left"), false);
+  assert.equal(mentionsSide(["Bilateral pain of joint of hands"], "left"), false);
+  assert.equal(mentionsSide(["Copyleft notice"], "left"), false, "only whole words");
 });

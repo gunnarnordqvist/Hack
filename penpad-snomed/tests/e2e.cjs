@@ -97,6 +97,17 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.waitForFunction(() => window.__penpad.finding && window.__penpad.finding.code === "300955002", null, { timeout: 60000 });
   check("thumb pain via the map, left side prefilled", (await page.evaluate(() => window.__penpad.values.laterality)) === "7771000");
   await page.click("#bm-back");
+  // the right hand: no finding that names the left side may stay in the list, and vice versa
+  await page.click('.bm .part[data-region="hand"][data-side="right"] path >> nth=0');
+  await page.waitForSelector(".mapitem", { timeout: 60000 });
+  const rightTexts = await page.$$eval(".mapitem span:first-child", (n) => n.map((x) => x.textContent));
+  check("right hand: no finding about the left hand is listed", rightTexts.length > 0 && !rightTexts.some((t) => /vänster|left/i.test(t)), `n=${rightTexts.length}`);
+  await page.click("#bm-back");
+  await page.click('.bm .part[data-region="hand"][data-side="left"] path >> nth=0');
+  await page.waitForSelector(".mapitem", { timeout: 60000 });
+  const leftTexts = await page.$$eval(".mapitem span:first-child", (n) => n.map((x) => x.textContent));
+  check("left hand: no finding about the right hand is listed", leftTexts.length > 0 && !leftTexts.some((t) => /höger|right/i.test(t)), `n=${leftTexts.length}`);
+  await page.click("#bm-back");
   await page.click('.segbtn:has-text("Bak")');
   await page.click('.bm .part[data-region="back"] path >> nth=0');
   await page.waitForSelector(".mapitem", { timeout: 60000 });

@@ -30,6 +30,14 @@ export function shapesFor(view, side) {
   return { box: BODY.viewBox[view], outline: [BODY.outline[view]], anchors: null, shapes: BODY[view] };
 }
 
+// side words in finding names, English and Swedish: a finding that says "left hand" is not an option when the right hand was chosen
+const SIDE_WORDS = { left: /(?<![\p{L}])(left|vänster|vänstra)(?![\p{L}])/iu, right: /(?<![\p{L}])(right|höger|högra)(?![\p{L}])/iu };
+/** Does any of the names mention the given side ("left" | "right")? */
+export function mentionsSide(names, side) {
+  const re = SIDE_WORDS[side];
+  return !!re && names.some((n) => n && re.test(n));
+}
+
 export const ZOOMABLE = new Set(["hand"]);
 // a region that is not drawn gets its nearest drawn relative highlighted instead
 const FALLBACK = { thumb: "hand", fingers: "hand", wrist: "hand", toes: "foot", eye: "head", ear: "head", nose: "head", mouth: "head", throat: "neck", elbow: "upperarm" };
