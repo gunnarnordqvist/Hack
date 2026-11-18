@@ -3,7 +3,7 @@
 // also uses the embedding model for candidates and validates codes live against the terminology server.
 
 import { extract, buildPhrases } from "./extract.js";
-import { sentence, expression, openEhr, fhirCondition, codesUsed, term } from "./generators.js";
+import { sentence, expression, openEhr, fhirCondition, codesUsed, term, expressionMany, openEhrMany, fhirBundle, codesUsedMany } from "./generators.js";
 import { rankLexical, lexScore, contentWords, normalizeSymptoms } from "./lexrank.js";
 import { drawBodyMap, ZOOM_OF, isZoomView, mainViewFor, drawnIn, sideOfCode, mentionsSide } from "./bodymap.js";
 import * as TX from "./txclient.js";
@@ -16,7 +16,7 @@ const I = {
     lang: "Språk", mode: "Läge", clinician: "Klinik", patient: "Patient",
     notices: "Licenser och tredjepartsmaterial", subs: "Delområden", loading: "Laddar…", txError: "Kunde inte nå terminologiservern.",
     clientNote: "Live mot HL7 Nordics terminologiserver, direkt från din webbläsare. Den här sidan lagrar inget SNOMED-innehåll. Ingen modell: förslagen kommer från serverns textfilter.",
-    mapTitle: "…eller peka på kroppen", front: "Fram", back: "Bak", toBody: "← Hela kroppen", zoom_leg: "Ben", zoom_headsection: "Huvud och hals, genomskärning", zoom_backzoom: "Rygg, närbild", location: "Plats",
+    mapTitle: "…eller peka på kroppen", front: "Fram", back: "Bak", toBody: "← Hela kroppen", chart: "Fynd i listan", addToList: "Lägg till i listan", updateEntry: "Uppdatera i listan", removeEntry: "Ta bort", editEntry: "Ändra", clearList: "Töm listan", scopeOne: "Detta fynd", scopeAll: "Hela listan", legendChart: "finns i listan", chartHint: "Fler fynd? Lägg till det här i listan och välj nästa på kroppen eller i texten.", addedMsg: "Tillagt i listan.", editingNote: "Du ändrar ett fynd i listan.", zoom_leg: "Ben", zoom_headsection: "Huvud och hals, genomskärning", zoom_backzoom: "Rygg, närbild", location: "Plats",
     mapHint: "Klicka på en kroppsdel. Hand, fot och huvud zoomar in. Sidan du klickar på blir patientens sida.",
     findingsHere: "Fynd på vald plats", showMore: "Visa fler", all: "Alla", noFindings: "Inga fynd i listan för den här platsen.",
     fromMap: "ifyllt från kroppskartan", sideL: "vänster", sideR: "höger", legendSel: "vald av dig", legendHl: "plats för valt fynd",
@@ -56,7 +56,7 @@ const I = {
     lang: "Language", mode: "Mode", clinician: "Clinician", patient: "Patient",
     notices: "Licences and third-party material", subs: "Sub-areas", loading: "Loading…", txError: "Could not reach the terminology server.",
     clientNote: "Live against the HL7 Nordics terminology server, straight from your browser. This page stores no SNOMED content. No model: suggestions come from the server text filter.",
-    mapTitle: "…or point at the body", front: "Front", back: "Back", toBody: "← Whole body", zoom_leg: "Leg", zoom_headsection: "Head and neck, cross-section", zoom_backzoom: "Back, close-up", location: "Site",
+    mapTitle: "…or point at the body", front: "Front", back: "Back", toBody: "← Whole body", chart: "Findings in the list", addToList: "Add to the list", updateEntry: "Update the entry", removeEntry: "Remove", editEntry: "Edit", clearList: "Clear the list", scopeOne: "This finding", scopeAll: "The whole list", legendChart: "in the list", chartHint: "More findings? Add this one to the list and pick the next on the body or in the text.", addedMsg: "Added to the list.", editingNote: "You are editing a finding in the list.", zoom_leg: "Leg", zoom_headsection: "Head and neck, cross-section", zoom_backzoom: "Back, close-up", location: "Site",
     mapHint: "Click a body part. Hand, foot and head zoom in. The side you click becomes the patient's side.",
     findingsHere: "Findings at the chosen site", showMore: "Show more", all: "All", noFindings: "No findings listed for this site.",
     fromMap: "filled from the body map", sideL: "left", sideR: "right", legendSel: "chosen by you", legendHl: "site of the chosen finding",
@@ -95,7 +95,7 @@ const I = {
 const S = {
   snap: null, source: "snapshot", known: new Map(), universe: [], optionsLoaded: new Set(), live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
   finding: null, values: {}, prefilled: new Set(), duration: null, expanded: new Set(), confirmed: false,
-  tab: "expr", validation: {}, manual: "", sampleHit: null,
+  tab: "expr", validation: {}, manual: "", sampleHit: null, chart: [], editing: null, scope: "one",
   map: { view: "front", main: "front", side: null, sel: null, topic: "all", more: false }, prefilledMap: new Set(),
 };
 const CODE_OF_SIDE = { left: "7771000", right: "24028007" };
@@ -306,7 +306,8 @@ async function selectFinding(code, fromText, fromMap) {
 }
 
 async function validateAll() {
-  for (const { code } of codesUsed(gstate(), ctx())) {
+  const sts = [...(S.finding ? [gstate()] : []), ...allStates()];
+  for (const { code } of codesUsedMany(sts, ctx())) {
     if (S.validation[code]) continue;
     S.validation[code] = { state: "checking" };
     const check = S.source === "client" ? TX.validate(code) : fetch("api/validate?code=" + code).then((r) => r.json());
@@ -357,9 +358,69 @@ async function ensureOptions(slot) {
 }
 
 // ------------------------------------------------------------------------------------------------ rendering
+// ------------------------------------------------------------------------------------------------ list of findings
+const entryState = (e) => ({ lang: S.lang, mode: S.mode, finding: e.finding, values: e.values, duration: e.duration });
+const allStates = () => S.chart.map(entryState);
+const clone = (x) => JSON.parse(JSON.stringify(x));
+
+function resetCurrent() {
+  S.text = ""; S.cand = null; S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = null; S.ex = null; S.confirmed = false;
+  S.map.sel = null; S.map.side = null; S.map.view = S.map.main; S.editing = null;
+}
+
+function chartAdd() {
+  if (!S.finding) return;
+  const entry = clone({ finding: S.finding, values: S.values, duration: S.duration });
+  if (S.editing !== null && S.chart[S.editing]) S.chart[S.editing] = entry; else S.chart.push(entry);
+  resetCurrent();
+  S.scope = "all";
+  render();
+  const msg = $("#addedmsg"); if (msg) msg.hidden = false;
+}
+
+function chartEdit(i) {
+  const e = S.chart[i];
+  if (!e) return;
+  S.finding = clone(e.finding); S.values = clone(e.values); S.duration = e.duration ? clone(e.duration) : null;
+  S.prefilled = new Set(); S.prefilledMap = new Set(); S.confirmed = false; S.editing = i; S.cand = null; S.ex = null;
+  focusMapOn(S.finding);
+  render();
+  $("#form").scrollIntoView({ behavior: "smooth" });
+}
+
+function chartRemove(i) {
+  S.chart.splice(i, 1);
+  if (S.editing === i) resetCurrent(); else if (S.editing !== null && S.editing > i) S.editing--;
+  if (!S.chart.length) S.scope = "one";
+  render();
+}
+
+/** Where on the body the listed findings are: [{region, side}] (the most specific region of each finding's site). */
+function chartMarks() {
+  const marks = [];
+  for (const e of S.chart) {
+    const regs = e.finding.site ? S.snap.bodymap.siteRegions[e.finding.site.code] : null;
+    if (regs && regs.length) marks.push({ region: regs[0], side: sideOfCode(e.values.laterality) });
+  }
+  return marks;
+}
+
+function renderChart() {
+  const box = $("#chart");
+  box.hidden = !S.chart.length;
+  if (!S.chart.length) { box.replaceChildren(); return; }
+  box.replaceChildren(h("h2", {}, `${t("chart")} (${S.chart.length})`),
+    h("ol", { class: "chartlist" }, S.chart.map((e, i) => h("li", { class: S.editing === i ? "editing" : "", "data-entry": String(i) },
+      h("span", { class: "entry" }, sentence(entryState(e), ctx()).text),
+      h("span", { class: "row tight" },
+        h("button", { type: "button", class: "ghost small", "data-edit": String(i), onclick: () => chartEdit(i) }, t("editEntry")),
+        h("button", { type: "button", class: "ghost small", "data-remove": String(i), onclick: () => chartRemove(i) }, t("removeEntry")))))),
+    h("button", { type: "button", class: "ghost small", id: "clear-list", onclick: () => { S.chart = []; S.scope = "one"; resetCurrent(); render(); } }, t("clearList")));
+}
+
 function render() {
   document.documentElement.lang = S.lang;
-  renderHeader(); renderInput(); renderMap(); renderCandidates(); renderForm(); renderConfirm(); renderOutputs(); renderFoot();
+  renderHeader(); renderInput(); renderMap(); renderCandidates(); renderForm(); renderConfirm(); renderChart(); renderOutputs(); renderFoot();
 }
 
 function seg(label, options, current, on) {
@@ -476,8 +537,8 @@ function renderMap() {
     : seg("", [["front", t("front")], ["back", t("back")]], M.view, (v) => { M.view = v; M.main = v; renderMap(); }));
   const host = h("div", { class: "bmhost", id: "bmhost" });
   box.append(host);
-  drawBodyMap(host, { view: M.view, side: M.side, sel: M.sel, hl: currentHl(), regionLabel, sideLabel }, { region: onRegion });
-  box.append(h("div", { class: "legend" }, h("span", { class: "sw sel" }), t("legendSel"), h("span", { class: "sw hl" }), t("legendHl")));
+  drawBodyMap(host, { view: M.view, side: M.side, sel: M.sel, hl: currentHl(), chart: chartMarks(), regionLabel, sideLabel }, { region: onRegion });
+  box.append(h("div", { class: "legend" }, h("span", { class: "sw sel" }), t("legendSel"), h("span", { class: "sw hl" }), t("legendHl"), S.chart.length ? [h("span", { class: "sw ch" }), t("legendChart")] : null));
   if (!M.sel) { box.append(h("p", { class: "hint" }, t("mapHint"))); return; }
   box.append(h("div", { class: "loc" }, h("strong", {}, t("location") + ": "), regionLabel(M.sel.region) + (M.sel.side ? " (" + sideLabel(M.sel.side) + ")" : ""),
     h("button", { type: "button", class: "ghost small", onclick: () => { M.sel = null; renderMap(); } }, "×")));
@@ -636,8 +697,10 @@ function renderConfirm() {
   if (S.lang === "sv") box.append(h("p", { class: "hint" }, t("unreviewed")));
   box.append(h("div", { class: "row" },
     h("button", { type: "button", class: "primary", id: "yes", onclick: () => { S.confirmed = true; renderConfirm(); } }, t("yes")),
+    h("button", { type: "button", class: "secondary", id: "add", onclick: chartAdd }, S.editing !== null ? t("updateEntry") : t("addToList")),
     h("button", { type: "button", class: "ghost", onclick: () => $("#form").scrollIntoView({ behavior: "smooth" }) }, t("edit"))));
   if (S.confirmed) box.append(h("p", { class: "ok", id: "okmsg" }, "✓ " + t("confirmed")));
+  box.append(h("p", { class: "hint" }, S.editing !== null ? t("editingNote") : t("chartHint")));
 }
 
 function pre(text, extraNote) {
@@ -663,22 +726,27 @@ function statusCell(code) {
 function renderOutputs() {
   const box = $("#outputs");
   box.replaceChildren(h("h2", {}, t("s5")));
-  if (!S.finding) { box.append(h("p", { class: "hint" }, t("pickFinding"))); return; }
+  if (!S.finding && !S.chart.length) { box.append(h("p", { class: "hint" }, t("pickFinding"))); return; }
+  // with a list: one finding or the whole list (the list alone when no finding is open)
+  const all = S.chart.length > 0 && (S.scope === "all" || !S.finding);
+  if (S.chart.length && S.finding) box.append(seg("", [["one", t("scopeOne")], ["all", `${t("scopeAll")} (${S.chart.length})`]], S.scope, (v) => { S.scope = v; renderOutputs(); }));
+  const states = all ? allStates() : [gstate()];
   const tabs = h("div", { class: "tabs", role: "tablist" }, Object.entries(t("tabs")).map(([k, v]) => h("button", { type: "button", role: "tab", class: "tab" + (S.tab === k ? " on" : ""), "aria-selected": S.tab === k ? "true" : "false", onclick: () => { S.tab = k; renderOutputs(); } }, v)));
   box.append(tabs);
   const c = ctx();
   const time = "2026-11-18T12:00:00Z";
-  if (S.tab === "expr") box.append(pre(expression(gstate(), c), t("exprNote")));
+  if (S.tab === "expr") box.append(pre(expressionMany(states, c), t("exprNote")));
   else if (S.tab === "oe") {
-    const r = openEhr(gstate(), c, { time });
+    const r = openEhrMany(states, c, { time });
     box.append(pre(JSON.stringify(r.composition, null, 2)));
     if (r.unmapped.length) box.append(h("div", { class: "callout" }, h("strong", {}, t("unmapped")), h("ul", {}, r.unmapped.map((u) => h("li", {}, `${u.key}: ${u.reason}`)))));
-  } else if (S.tab === "fhir") box.append(pre(JSON.stringify(fhirCondition(gstate(), c, { time }), null, 2)));
+  } else if (S.tab === "fhir") box.append(pre(JSON.stringify(all ? fhirBundle(states, c, { time }) : fhirCondition(states[0], c, { time }), null, 2)));
   else {
-    const rows = codesUsed(gstate(), c);
+    const rows = codesUsedMany(states, c);
+    const termOf = (r) => r.role === "finding site" ? (S.lang === "sv" ? r.finding.site.sv || r.finding.site.en : r.finding.site.en) : r.role === "finding" ? (S.lang === "sv" ? r.finding.sv || r.finding.en : r.finding.en) : lab(r.code);
     box.append(h("div", { class: "tablewrap" }, h("table", {}, h("thead", {}, h("tr", {}, [t("role"), t("code"), t("term"), t("status")].map((x) => h("th", {}, x)))),
       h("tbody", {}, rows.map((r) => h("tr", {}, h("td", {}, (I[S.lang].role_ || {})[r.role] || S.snap.cfg.slots[r.role]?.label[S.lang] || r.role), h("td", {}, h("a", { href: browserLink(r.code), target: "_blank", rel: "noopener", class: "mono" }, r.code)),
-        h("td", {}, r.role === "finding site" ? (S.lang === "sv" ? S.finding.site.sv || S.finding.site.en : S.finding.site.en) : r.role === "finding" ? (S.lang === "sv" ? S.finding.sv || S.finding.en : S.finding.en) : lab(r.code)), h("td", {}, statusCell(r.code))))))));
+        h("td", {}, termOf(r)), h("td", {}, statusCell(r.code))))))));
   }
 }
 

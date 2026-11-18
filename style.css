@@ -2,7 +2,7 @@
    side by side when there is room. Palette: blue-grey ink, teal for confirmed and valid, amber for caution. */
 :root {
   --bg: #f4f7f9; --surface: #ffffff; --fg: #14202a; --muted: #55656f; --line: #d3dce2;
-  --accent: #0b6f6a; --accent-soft: #dcf0ee; --accent-fg: #ffffff; --warn: #8f5500; --warn-soft: #fbefd9;
+  --accent: #0b6f6a; --accent-soft: #dcf0ee; --accent-fg: #ffffff; --warn: #8f5500; --warn-soft: #fbefd9; --chart: #3b5bdb; --chart-soft: #dbe4ff;
   --bad: #a3294a; --code-bg: #eaeff3; --bm-fill: #e6edf1; --bm-line: #8da0ad;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-head: "Space Grotesk", "Inter", system-ui, sans-serif;
@@ -11,13 +11,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0e161c; --surface: #15202a; --fg: #e3ebf0; --muted: #9aaab5; --line: #28363f;
-    --accent: #4fd1c5; --accent-soft: #123b3a; --accent-fg: #06201f; --warn: #f0b95a; --warn-soft: #3a2b10;
+    --accent: #4fd1c5; --accent-soft: #123b3a; --accent-fg: #06201f; --warn: #f0b95a; --warn-soft: #3a2b10; --chart: #8fa8ff; --chart-soft: #1f2a57;
     --bad: #f08aa5; --code-bg: #1c2a34; --bm-fill: #243642; --bm-line: #5f7686; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0e161c; --surface: #15202a; --fg: #e3ebf0; --muted: #9aaab5; --line: #28363f;
-  --accent: #4fd1c5; --accent-soft: #123b3a; --accent-fg: #06201f; --warn: #f0b95a; --warn-soft: #3a2b10;
+  --accent: #4fd1c5; --accent-soft: #123b3a; --accent-fg: #06201f; --warn: #f0b95a; --warn-soft: #3a2b10; --chart: #8fa8ff; --chart-soft: #1f2a57;
   --bad: #f08aa5; --code-bg: #1c2a34; --bm-fill: #243642; --bm-line: #5f7686; color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -126,6 +126,7 @@ tr:last-child td { border-bottom: none; }
 .bm .part { cursor: pointer; outline: none; }
 .bm .part path { fill: var(--bm-fill); stroke: var(--bm-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .bm .part:hover path { fill: var(--accent-soft); }
+.bm .part.ch path { fill: var(--chart-soft); stroke: var(--chart); stroke-width: 1.8; }
 .bm .part.hl path { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.8; }
 .bm .part.sel path { fill: var(--accent); }
 .bm .part:focus-visible path { stroke: var(--fg); stroke-width: 2.6; }
@@ -133,6 +134,7 @@ tr:last-child td { border-bottom: none; }
 .subs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: 12.5px; color: var(--muted); }
 .sw { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--bm-line); display: inline-block; margin-right: -6px; }
+.sw.ch { background: var(--chart-soft); border-color: var(--chart); }
 .sw.sel { background: var(--accent); } .sw.hl { background: var(--warn-soft); border-color: var(--warn); }
 .loc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 8px; }
 .listh { font-family: var(--font-head); font-size: 15px; margin: 10px 0 6px; }
@@ -142,3 +144,9 @@ tr:last-child td { border-bottom: none; }
 .mapitem.on { background: var(--accent-soft); border-color: var(--accent); }
 .row.tight { margin-top: 4px; }
 .bm .leader { stroke: var(--muted); stroke-width: 1.2; pointer-events: none; }
+
+.chartlist { list-style: decimal; padding-left: 22px; margin: 0 0 10px; }
+.chartlist li { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.chartlist li.editing { background: var(--accent-soft); }
+.chartlist .entry { flex: 1; }
+button.secondary { font: inherit; padding: 8px 14px; border: 1px solid var(--accent); background: var(--surface); color: var(--accent); border-radius: 8px; cursor: pointer; }
