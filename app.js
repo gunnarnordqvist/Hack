@@ -7,6 +7,7 @@ import { sentence, expression, openEhr, fhirCondition, codesUsed, term } from ".
 import { rankLexical, lexScore } from "./lexrank.js";
 import { drawBodyMap, ZOOMABLE, mainViewFor, drawnIn, sideOfCode, mentionsSide } from "./bodymap.js";
 import * as TX from "./txclient.js";
+import { personalDataReason, PERSONAL_DATA_ERROR } from "./guard.js";
 
 const I = {
   sv: {
@@ -23,6 +24,8 @@ const I = {
     ph: "Till exempel: smärta i vänster tumme sedan två dagar, bultande",
     go: "Tolka", reset: "Börja om", tryThese: "Prova",
     localNote: "Texten tolkas i din webbläsare. Bara kodslagningar går till terminologiservern.",
+    localNoteClient: "Sökorden (inte hela texten) skickas till terminologiservern, en tredje part. Skriv inga personuppgifter: demon är bara för påhittade exempel.",
+    personal: "Texten ser ut att innehålla en personuppgift (personnummer eller e-postadress). Den skickas inte någonstans. Demon är bara för påhittade exempel.",
     staticNote: "Demoläge: data är en förberäknad kopia av SNOMED CT från servern. Omrankning med modell finns bara för exempelfraserna.",
     liveNote: "Live: omrankning med en lokal modell och kontroll av koder mot terminologiservern.",
     nothing: "Skriv något och tryck Tolka.", noMatch: "Ingen säker träff. Välj själv i listan eller sök nedan.",
@@ -61,6 +64,8 @@ const I = {
     ph: "For example: pain in the left thumb for two days, throbbing",
     go: "Interpret", reset: "Start over", tryThese: "Try",
     localNote: "The text is interpreted in your browser. Only code lookups go to the terminology server.",
+    localNoteClient: "The search words (not the whole text) are sent to the terminology server, a third party. Do not type personal data: the demo is for made-up examples only.",
+    personal: "The text looks like it contains personal data (an identity number or an e-mail address). It is not sent anywhere. The demo is for made-up examples only.",
     staticNote: "Demo mode: data is a precomputed copy of SNOMED CT from the server. Model re-ranking exists only for the sample phrases.",
     liveNote: "Live: re-ranking with a local model and code checks against the terminology server.",
     nothing: "Type something and press Interpret.", noMatch: "No confident match. Pick from the list or search below.",
@@ -105,7 +110,6 @@ function h(tag, attrs = {}, ...kids) {
     if (v == null || v === false) continue;
     if (k === "class") el.className = v;
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
-    else if (k === "html") el.innerHTML = v;
     else el.setAttribute(k, v === true ? "" : v);
   }
   for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
@@ -228,9 +232,15 @@ async function candidatesFor(rest, rawText) {
 
 async function interpret() {
   S.confirmed = false;
+  if (personalDataReason(S.text)) {
+    S.cand = { query: "", items: [], low_confidence: true, error: "personal" };
+    S.finding = null; S.values = {}; S.prefilled = new Set(); S.duration = null; S.ex = null;
+    render();
+    return;
+  }
   S.ex = extract(S.text, S.snap.cfg, S.snap.labels, S.phrases);
   try { S.cand = await candidatesFor(S.ex.rest, S.text); }
-  catch (e) { S.cand = { query: S.text, mode: "text", items: [], low_confidence: true, error: true }; }
+  catch (e) { S.cand = { query: S.text, mode: "text", items: [], low_confidence: true, error: e && e.message === PERSONAL_DATA_ERROR ? "personal" : true }; }
   S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = S.ex.duration; S.expanded = new Set();
   const first = S.cand.items.find(inLang);
   if (first && !S.cand.low_confidence) await selectFinding(first.code, true);
@@ -378,7 +388,7 @@ function renderInput() {
   $("#text").placeholder = t("ph");
   if ($("#text").value !== S.text) $("#text").value = S.text;
   $("#go").textContent = t("go"); $("#rs").textContent = t("reset");
-  $("#notes").textContent = t("localNote");
+  $("#notes").textContent = t(S.source === "client" ? "localNoteClient" : "localNote");
   $("#samples").replaceChildren(h("span", { class: "seglabel" }, t("tryThese")),
     ...examples().map((txt) => h("button", { type: "button", class: "chip", onclick: () => { S.text = txt; $("#text").value = txt; interpret(); } }, txt.length > 46 ? txt.slice(0, 44) + "…" : txt)));
 }
@@ -486,7 +496,7 @@ function renderCandidates() {
     box.append(seg("", [["text", t("baseline")], ["rerank", t("rerank")]], S.candMode, async (m) => { S.candMode = m; S.cand = await candidatesFor(S.ex.rest, S.text); render(); }));
   }
   const shownItems = S.cand.items.filter(inLang);
-  if (S.cand.error) box.append(h("p", { class: "warn" }, t("txError")));
+  if (S.cand.error) box.append(h("p", { class: "warn", id: "cand-error" }, t(S.cand.error === "personal" ? "personal" : "txError")));
   else if (!shownItems.length) box.append(h("p", { class: "warn" }, t("noMatch")));
   else if (S.cand.low_confidence) box.append(h("p", { class: "warn" }, "⚠ " + t("lowConf")));
   const list = h("ul", { class: "cands" });
@@ -521,7 +531,7 @@ function manualSearch() {
       timer = setTimeout(async () => {
         const q = S.manual.trim();
         if (q.length < 2) { draw([]); return; }
-        try { draw((await clientCandidates(q, 8)).items); } catch (_) { out.replaceChildren(h("li", { class: "warn" }, t("txError"))); }
+        try { draw((await clientCandidates(q, 8)).items); } catch (e) { out.replaceChildren(h("li", { class: "warn" }, t(e && e.message === PERSONAL_DATA_ERROR ? "personal" : "txError"))); }
       }, 300);
       return;
     }
