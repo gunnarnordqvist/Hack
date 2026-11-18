@@ -1,17 +1,18 @@
-name: Deploy site
+name: Build and publish site
 
-# Publishes the branch `gh-pages` (the built static site, no SNOMED CT content) to GitHub Pages.
-# The workflow lives on `main` because the `github-pages` environment only accepts deployments from the default branch.
-# Run it from the Actions tab (Run workflow) after the site on `gh-pages` has been updated.
+# On every push to main that touches penpad-snomed/: run the tests, build the static site (tools/build_site.py, no SNOMED CT
+# content), update the gh-pages branch with it and publish it with GitHub Pages at https://<user>.github.io/<repo>/.
+# The workflow lives on main because the github-pages environment only accepts deployments from the default branch.
+# Needs Settings -> Pages -> Source: "GitHub Actions". Run it by hand from the Actions tab with "Run workflow".
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
-    paths: [".github/workflows/pages.yml"]
+    paths: ["penpad-snomed/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # to update the gh-pages branch
   pages: write
   id-token: write
 
@@ -20,18 +21,68 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: penpad-snomed
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: JavaScript tests
+        run: node --test tests/*.test.mjs
+      - name: Python tests (ranking tests skip themselves if the terminology server is unreachable)
+        run: python -m unittest tests/test_backend.py
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the site
+        run: python penpad-snomed/tools/build_site.py _site
+      - name: Check that no SNOMED CT snapshot is in the site
+        run: test ! -e _site/data/snapshot.json
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Update the gh-pages branch
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads "$url" gh-pages >/dev/null 2>&1; then
+            git clone --quiet --branch gh-pages --single-branch "$url" ../ghp
+          else
+            mkdir ../ghp && git -C ../ghp init --quiet -b gh-pages && git -C ../ghp remote add origin "$url"
+          fi
+          rsync -a --delete --exclude=.git _site/ ../ghp/
+          cd ../ghp
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "gh-pages is already up to date"
+          else
+            git commit --quiet -m "Publish site from ${GITHUB_SHA}"
+            git push --quiet origin gh-pages
+          fi
+
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
       - id: deployment
         uses: actions/deploy-pages@v4
