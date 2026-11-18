@@ -214,6 +214,7 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   const addFromMap = async (selector) => {
     await page.click(selector);
     await page.waitForSelector(".mapitem", { timeout: 60000 });
+    await page.evaluate(() => { window.__penpad.finding = null; }); // so the wait cannot see a finding from an earlier step
     await page.click(".mapitem >> nth=0");
     await page.waitForFunction(() => window.__penpad.finding, null, { timeout: 60000 });
     await page.click("#add");
@@ -229,6 +230,18 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.click('.tab:has-text("openEHR")');
   const comp = JSON.parse(await page.textContent("pre.out"));
   check("openEHR output for the list has one observation per finding", comp.content.length === 3 && comp.content.every((x) => x._type === "OBSERVATION"));
+  // save the list to a file, clear it, open the file again
+  const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save-list")]);
+  const savedPath = await download.path();
+  const saved = JSON.parse(require("fs").readFileSync(savedPath, "utf8"));
+  check("the saved list holds three entries with codes only", saved.entries.length === 3 && saved.entries.every((e) => /^\d+$/.test(e.finding) && Object.values(e.values).every((v) => /^\d+$/.test(v)) && !("en" in e) && !("sv" in e)), JSON.stringify(saved.entries).slice(0, 160));
+  await page.click("#clear-list");
+  await page.setInputFiles("#import-file", savedPath);
+  await page.waitForFunction(() => window.__penpad.chart.length === 3, null, { timeout: 60000 });
+  check("opening the saved list brings the three findings back, with names from the server", (await page.$$(".chartlist li")).length === 3 && (await page.evaluate(() => window.__penpad.chart.every((e) => e.finding.en || e.finding.sv))));
+  await page.setInputFiles("#import-file", { name: "bad.json", mimeType: "application/json", buffer: Buffer.from("{\"format\":\"other\"}") });
+  await page.waitForFunction(() => document.querySelector("#list-msg") && !document.querySelector("#list-msg").hidden, null, { timeout: 10000 });
+  check("a file that is not a saved list is refused and changes nothing", (await page.evaluate(() => window.__penpad.chart.length)) === 3);
   await page.click('[data-edit="0"]');
   check("editing a listed finding opens it again", (await page.textContent("#add")).length > 0 && (await page.evaluate(() => window.__penpad.editing)) === 0);
   await page.click("#add");
@@ -280,6 +293,10 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
     await page.waitForTimeout(300);
     const got = await page.evaluate(() => ({ ...window.__penpad.values, days: window.__penpad.duration && window.__penpad.duration.n }));
     for (const [k, v] of Object.entries({ laterality: want.lat, severity: want.sev, aspect: want.aspect, days: want.days })) if (v !== undefined && got[k] !== v) enFail.push(`${text}: ${k} ${got[k]} != ${v}`);
+    if (isClient && want.aspect) { // SNOMED CT has "Medial aspect of knee": shown as information next to the aspect
+      try { await page.waitForFunction(() => Object.values(window.__penpad.aspectSites).some((x) => x && /^medial aspect of/i.test(x.en)), null, { timeout: 20000 }); }
+      catch (_) { enFail.push(`${text}: no ready-made aspect structure`); }
+    }
   }
   check("English phrases give the right finding, side, severity, aspect and time", enFail.length === 0, enFail.join(" | "));
   // general symptoms in one sentence, and a body part that has no such finding
@@ -291,7 +308,7 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.fill("#text", "rash on both arms");
   await page.click("#go");
   await page.waitForSelector("#part-miss", { timeout: 90000 });
-  check("a finding with no match inside the named body part says so instead of guessing", (await page.$$("#cands .cand")).length === 0);
+  check("a finding with no match inside the named body part says so instead of guessing", (await page.evaluate(() => window.__penpad.finding)) === null && (await page.$$("#cands .tag.offreg")).length === (await page.$$("#cands .cand")).length);
   await page.fill("#text", "pain in the left arm and right leg");
   await page.click("#go");
   await page.waitForFunction(() => window.__penpad.multi && window.__penpad.multi.items.length === 2 && window.__penpad.multi.items.every((i) => i.status !== "resolving"), null, { timeout: 90000 });

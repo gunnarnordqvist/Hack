@@ -23,3 +23,11 @@ test("separators, dashes, full-width digits, phone numbers and spelled-out e-mai
     assert.notEqual(personalDataReason(x), null, x);
   assert.equal(personalDataReason("pain for 2 days, 3 times, since 12 March"), null);
 });
+
+test("a name or a street address is recognised; a capitalised first word and lower-case symptom text are not", () => {
+  assert.equal(personalDataReason("ont i armen, patienten heter Anna Svensson"), "name");
+  assert.equal(personalDataReason("pain in the knee, John Smith says"), "name");
+  assert.equal(personalDataReason("Anna Svensson, Storgatan 1"), "address");
+  assert.equal(personalDataReason("lives at Kungsgatan 12"), "address");
+  for (const t of ["Smärta i vänster tumme sedan två dagar", "Pain in the right knee", "ont i huvudet, Feber sedan igår", "headache and fever for 3 days"]) assert.equal(personalDataReason(t), null, t);
+});

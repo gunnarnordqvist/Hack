@@ -2,65 +2,184 @@
 # tools/check_spec.py fails if a listed test does not exist. Written by the AI assistant from the owner's brief: DRAFT until the owner signs it.
 version: 1
 status: draft
-tier: A          # personal/demo; made-up examples only. Real patient data would be tier D (see docs/build-record.yaml)
-
+tier: A
 rules:
-  - id: R1
-    rule: "Free text is split into slots (side, duration, severity, character, progress) by a lexicon; what is left is the finding text. A text that names several body parts ('ont i armen, handen och huvudet') becomes one proposal per body part: each has its own body part, side, severity and character; only time words said once are shared; nothing is added to the list without the user's click."
-    example: {given: "Swedish text 'värk i höger hand sedan två dagar'", then: "side=right, duration=PT2D, the rest is searched as finding"}
-    error_case: "Text without slot words is left unchanged; a number without unit is not a duration."
-    tests: ["Swedish dictation fills side, duration and character, leaves the finding", "text without slot words is left alone", "a number word without a unit is not a duration", "a text is cut at commas, och, and, samt", "body words are found as whole words, in both languages and in definite forms", "after a fall: arm, hand and head become three findings, each with its own body part", "a side, a severity or a character belongs to its own body part only", "time words said once are shared, a side is never shared", "a compound word is a whole finding of its own", "one finding with several qualifiers stays one finding", "text without any finding words gives no entries", "an everyday phrase with a finding of its own becomes that finding's word", "a later clause without a body word but with words of its own is a maybe-finding, not lost", "filler such as 'sudden onset' is not a maybe-finding", "a body part followed by a plain quality word stays one finding", "a pain suggestion that adds 'pain' to words that name neither pain nor swelling is noticed", "whole body lists general findings such as fever", "English: fever and cough are two general findings sharing the time", "a finding with no match inside the named body part says so instead of guessing"]
-  - id: R2
-    rule: "Candidate findings come only from the terminology server's ECL result set; the model/lexical score only orders them."
-    example: {given: "a query for thumb pain", then: "every candidate id is in the server's expansion of the finding ECL"}
-    error_case: "A concept the server did not return is never offered."
-    tests: ["test_every_candidate_is_in_the_server_universe", "token overlap scoring"]
-  - id: R3
-    rule: "A finding without English term does not break ranking; ties are broken by the shorter name."
-    example: {given: "concept with only a Swedish name", then: "it is ranked without error"}
-    error_case: "Missing names never raise."
-    tests: ["a concept without an English term does not break the ranking", "ties are broken by the shorter name, using whichever name exists"]
-  - id: R4
-    rule: "Laterality is offered only when the finding site is lateralizable; otherwise it is ignored. An aspect of the site (anterior, posterior, medial, lateral, proximal, distal; SNOMED CT qualifier values) is offered for any finding with a site; it is shown in the sentence and as a FHIR extension, kept as a comment in the SNOMED expression (the model has no attribute for it) and reported as unmapped in openEHR."
-    example: {given: "thumb finding", then: "left/right is asked for"}
-    error_case: "Non-lateralizable site: laterality ignored."
-    tests: ["laterality is ignored when the body site is not lateralizable", "laterality block shown for lateralizable site", "test_detail_gives_lateralizable_site_for_thumb", "aspect words fill the aspect, in both languages", "aspect chosen next to the map becomes the aspect of the finding", "the form shows the aspect slot", "typed 'lateral' fills the aspect"]
-  - id: R5
-    rule: "Outputs: sentence (sv/en, clinician/patient), SNOMED expression, openEHR COMPOSITION, FHIR Condition. Several findings can be kept in a list (e.g. after a fall); outputs then cover the whole list: one expression each, one COMPOSITION with an OBSERVATION each, a FHIR Bundle of Conditions. Terms missing in Swedish are shown in English and reported."
-    example: {given: "a chosen finding with right side and severity", then: "all four outputs carry the same codes"}
-    error_case: "Unmapped terms are listed, not invented."
-    tests: ["clinician sentence, Swedish", "clinician sentence, English", "patient sentence, Swedish and English", "SNOMED expression", "openEHR composition carries SNOMED codes and the archetype nodes", "FHIR Condition", "codesUsed lists finding, site and every chosen value", "an aspect of the site (front side, toward the middle ...) is in the sentence, kept as a comment in the expression, listed as unmapped in openEHR and an extension in FHIR", "an aspect without a body site is ignored", "a list of findings: one expression each, one composition with an observation each, a FHIR Bundle, codes once", "a single FHIR Condition keeps its usual id", "list holds three findings", "the body marks the findings in the list", "FHIR output for the list is a Bundle of three Conditions", "openEHR output for the list has one observation per finding", "editing a listed finding opens it again", "updating keeps three findings", "removing a listed finding", "clearing the list", "ISO 8601 durations", "a term missing in the Swedish module is shown in English and reported"]
-  - id: R6
-    rule: "Codes are validated against the server; a code with non-digits is refused by the local server."
-    example: {given: "GET /api/validate?code= with a valid id", then: "result from server"}
-    error_case: "Non-numeric code: 400."
-    tests: ["test_health_and_validate_input_checks"]
-  - id: R7
-    rule: "Findings offered for a body part named in the text must have their finding site inside that body part (SNOMED is-a, checked on the server); others are marked or left out. Body map: regions are drawn where anatomy says; clicking a region lists findings of that region (by SNOMED is-a on finding site); a side from the click overrides typed side; findings naming the opposite side are not listed."
-    example: {given: "click on the left hand", then: "no finding about the right hand is listed"}
-    error_case: "An undrawn region falls back to its nearest drawn relative."
-    tests: ["regions are drawn where the anatomy says", "a region that is not drawn falls back to its nearest drawn relative", "paired regions come in left and right, unpaired ones do not", "a finding that names the other side is recognised, in English and Swedish", "left hand: no finding about the right hand is listed", "right hand: no finding about the left hand is listed", "side from the map becomes laterality (right)", "hand, leg, head-and-neck and back have a close-up; the trunk and arms do not", "every close-up draws the regions it promises, and only valid ones", "head close-up: cross-section with nose, mouth, teeth, tongue, throat and larynx", "tongue in the cross-section lists findings", "leg close-up: thigh, knee, lower leg, ankle and foot, all on the left", "back close-up: back and buttock", "one sentence, three body parts: every proposal is found", "each body part keeps its own side", "each finding's site is inside its own body part", "a time word said once is shared", "add all puts the three findings in the list", "'ont i handen' finds a finding whose site is in the hand"]
-  - id: R8
-    rule: "Language: with English chosen, no Swedish name is shown next to a suggestion, only English examples are offered, and no Swedish text appears anywhere in the interface (both languages have the same text keys). Typed English phrases give the same quality of result as Swedish ones (side, severity, aspect, time, several body parts)."
-    example: {given: "UI in English", then: "suggestions in English"}
-    error_case: "n/a"
-    tests: ["English UI: no Swedish name next to a suggestion", "English UI: only English examples are offered", "English UI: suggestions are shown in English", "Swedish and English have exactly the same text keys", "English texts contain no Swedish letters and are not copies of the Swedish ones", "every label in the configuration has an English text without Swedish letters", "relative time words: last week, last month, förra veckan", "English phrases give the right finding, side, severity, aspect and time", "English: left arm and right leg are two findings, each in its own limb", "the whole arm and the whole leg are body parts of their own (upper and lower limb)"]
-  - id: R9
-    rule: "Personal data guard: text that looks like a personal identity number or an e-mail address is never sent to the terminology server; a warning is shown."
-    example: {given: "'191212121212' typed as search", then: "no request leaves the page"}
-    error_case: "Refused before any request."
-    tests: ["personal identity numbers are recognised in the usual forms", "e-mail addresses are recognised", "a filter that looks like a personal identity number is refused before any request", "personal data guard: nothing with the number left the page", "personal data guard: warning shown"]
-  - id: R10
-    rule: "The published site contains no SNOMED CT content (no snapshot) and every file the page imports exists; the repository holds no secrets."
-    example: {given: "build of the site", then: "no data/snapshot.json, a config.json instead"}
-    error_case: "Build fails if snapshot present."
-    tests: ["test_no_snapshot_and_a_config_file", "test_every_relative_import_exists", "test_the_page_loads_only_files_that_exist", "test_the_repository_has_no_findings"]
-
+- id: R1
+  rule: 'Free text is split into slots (side, duration, severity, character, progress) by a lexicon; what is left is the finding text. A text that names
+    several body parts (''ont i armen, handen och huvudet'') becomes one proposal per body part: each has its own body part, side, severity and character;
+    only time words said once are shared; nothing is added to the list without the user''s click.'
+  example:
+    given: Swedish text 'värk i höger hand sedan två dagar'
+    then: side=right, duration=PT2D, the rest is searched as finding
+  error_case: Text without slot words is left unchanged; a number without unit is not a duration.
+  tests:
+  - Swedish dictation fills side, duration and character, leaves the finding
+  - text without slot words is left alone
+  - a number word without a unit is not a duration
+  - a text is cut at commas, och, and, samt
+  - body words are found as whole words, in both languages and in definite forms
+  - 'after a fall: arm, hand and head become three findings, each with its own body part'
+  - a side, a severity or a character belongs to its own body part only
+  - time words said once are shared, a side is never shared
+  - a compound word is a whole finding of its own
+  - one finding with several qualifiers stays one finding
+  - text without any finding words gives no entries
+  - an everyday phrase with a finding of its own becomes that finding's word
+  - a later clause without a body word but with words of its own is a maybe-finding, not lost
+  - filler such as 'sudden onset' is not a maybe-finding
+  - a body part followed by a plain quality word stays one finding
+  - a pain suggestion that adds 'pain' to words that name neither pain nor swelling is noticed
+  - whole body lists general findings such as fever
+  - 'English: fever and cough are two general findings sharing the time'
+  - a finding with no match inside the named body part says so instead of guessing
+- id: R2
+  rule: Candidate findings come only from the terminology server's ECL result set; the model/lexical score only orders them.
+  example:
+    given: a query for thumb pain
+    then: every candidate id is in the server's expansion of the finding ECL
+  error_case: A concept the server did not return is never offered.
+  tests:
+  - test_every_candidate_is_in_the_server_universe
+  - token overlap scoring
+- id: R3
+  rule: A finding without English term does not break ranking; ties are broken by the shorter name.
+  example:
+    given: concept with only a Swedish name
+    then: it is ranked without error
+  error_case: Missing names never raise.
+  tests:
+  - a concept without an English term does not break the ranking
+  - ties are broken by the shorter name, using whichever name exists
+- id: R4
+  rule: Laterality is offered only when the finding site is lateralizable; otherwise it is ignored. An aspect of the site (anterior, posterior, medial,
+    lateral, proximal, distal; SNOMED CT qualifier values) is offered for any finding with a site; it is shown in the sentence and as a FHIR extension,
+    kept as a comment in the SNOMED expression (the model has no attribute for it) and reported as unmapped in openEHR.
+  example:
+    given: thumb finding
+    then: left/right is asked for
+  error_case: 'Non-lateralizable site: laterality ignored.'
+  tests:
+  - laterality is ignored when the body site is not lateralizable
+  - laterality block shown for lateralizable site
+  - test_detail_gives_lateralizable_site_for_thumb
+  - aspect words fill the aspect, in both languages
+  - aspect chosen next to the map becomes the aspect of the finding
+  - the form shows the aspect slot
+  - typed 'lateral' fills the aspect
+- id: R5
+  rule: 'Outputs: sentence (sv/en, clinician/patient), SNOMED expression, openEHR COMPOSITION, FHIR Condition. Several findings can be kept in a list (e.g.
+    after a fall); outputs then cover the whole list: one expression each, one COMPOSITION with an OBSERVATION each, a FHIR Bundle (a demo Patient, a demo
+    Encounter and the Conditions, all linked by references). The list can be saved to a file and opened again; the file holds codes and answers only, never
+    names, and is checked entry by entry when opened. A ready-made SNOMED CT aspect structure (e.g. Anterior aspect of knee) is shown as information, never
+    as a replacement of the finding site. Terms missing in Swedish are shown in English and reported. Codes are validated against the server; a code with
+    non-digits is refused by the local server.'
+  example:
+    given: a chosen finding with right side and severity
+    then: all four outputs carry the same codes
+  error_case: 'Unmapped terms are listed, not invented. Non-numeric code: 400.'
+  tests:
+  - clinician sentence, Swedish
+  - clinician sentence, English
+  - patient sentence, Swedish and English
+  - SNOMED expression
+  - openEHR composition carries SNOMED codes and the archetype nodes
+  - FHIR Condition
+  - codesUsed lists finding, site and every chosen value
+  - an aspect of the site (front side, toward the middle ...) is in the sentence, kept as a comment in the expression, listed as unmapped in openEHR and
+    an extension in FHIR
+  - an aspect without a body site is ignored
+  - 'a list of findings: one expression each, one composition with an observation each, a FHIR Bundle, codes once'
+  - a single FHIR Condition keeps its usual id
+  - list holds three findings
+  - the body marks the findings in the list
+  - FHIR output for the list is a Bundle of three Conditions
+  - openEHR output for the list has one observation per finding
+  - editing a listed finding opens it again
+  - updating keeps three findings
+  - removing a listed finding
+  - clearing the list
+  - ISO 8601 durations
+  - a term missing in the Swedish module is shown in English and reported
+  - test_health_and_validate_input_checks
+  - a saved list holds codes and answers only, no names
+  - a saved list can be read again
+  - a file that is not a saved list, or has bad entries, is refused entry by entry
+  - size limits
+  - the saved list holds three entries with codes only
+  - opening the saved list brings the three findings back, with names from the server
+  - a file that is not a saved list is refused and changes nothing
+  - 'a ready-made aspect structure is information only: comment, extra FHIR body site, extra code row; the site is not replaced'
+- id: R6
+  rule: 'Findings offered for a body part named in the text must have their finding site inside that body part (SNOMED is-a, checked on the server); others
+    are marked or left out. Body map: regions are drawn where anatomy says; clicking a region lists findings of that region (by SNOMED is-a on finding site);
+    a side from the click overrides typed side; findings naming the opposite side are not listed.'
+  example:
+    given: click on the left hand
+    then: no finding about the right hand is listed
+  error_case: An undrawn region falls back to its nearest drawn relative.
+  tests:
+  - regions are drawn where the anatomy says
+  - a region that is not drawn falls back to its nearest drawn relative
+  - paired regions come in left and right, unpaired ones do not
+  - a finding that names the other side is recognised, in English and Swedish
+  - 'left hand: no finding about the right hand is listed'
+  - 'right hand: no finding about the left hand is listed'
+  - side from the map becomes laterality (right)
+  - hand, leg, head-and-neck and back have a close-up; the trunk and arms do not
+  - every close-up draws the regions it promises, and only valid ones
+  - 'head close-up: cross-section with nose, mouth, teeth, tongue, throat and larynx'
+  - tongue in the cross-section lists findings
+  - 'leg close-up: thigh, knee, lower leg, ankle and foot, all on the left'
+  - 'back close-up: back and buttock'
+  - 'one sentence, three body parts: every proposal is found'
+  - each body part keeps its own side
+  - each finding's site is inside its own body part
+  - a time word said once is shared
+  - add all puts the three findings in the list
+  - '''ont i handen'' finds a finding whose site is in the hand'
+- id: R7
+  rule: 'Language: with English chosen, no Swedish name is shown next to a suggestion, only English examples are offered, and no Swedish text appears anywhere
+    in the interface (both languages have the same text keys). Typed English phrases give the same quality of result as Swedish ones (side, severity, aspect,
+    time, several body parts).'
+  example:
+    given: UI in English
+    then: suggestions in English
+  error_case: n/a
+  tests:
+  - 'English UI: no Swedish name next to a suggestion'
+  - 'English UI: only English examples are offered'
+  - 'English UI: suggestions are shown in English'
+  - Swedish and English have exactly the same text keys
+  - English texts contain no Swedish letters and are not copies of the Swedish ones
+  - every label in the configuration has an English text without Swedish letters
+  - 'relative time words: last week, last month, förra veckan'
+  - English phrases give the right finding, side, severity, aspect and time
+  - 'English: left arm and right leg are two findings, each in its own limb'
+  - the whole arm and the whole leg are body parts of their own (upper and lower limb)
+- id: R8
+  rule: 'Personal data guard: text that looks like a personal identity number, a phone number, an e-mail address, a name (two capitalised words) or a street
+    address is never sent to the terminology server; a warning is shown. The published site contains no SNOMED CT content (no snapshot) and every file the
+    page imports exists; the repository holds no secrets.'
+  example:
+    given: '''191212121212'' typed as search'
+    then: no request leaves the page
+  error_case: Refused before any request. Build fails if snapshot present.
+  tests:
+  - personal identity numbers are recognised in the usual forms
+  - e-mail addresses are recognised
+  - a filter that looks like a personal identity number is refused before any request
+  - 'personal data guard: nothing with the number left the page'
+  - 'personal data guard: warning shown'
+  - test_no_snapshot_and_a_config_file
+  - test_every_relative_import_exists
+  - test_the_page_loads_only_files_that_exist
+  - test_the_repository_has_no_findings
+  - a name or a street address is recognised; a capitalised first word and lower-case symptom text are not
 never_do:
-  - "Send anything that looks like personal data to an outside service."
-  - "Publish SNOMED CT content (snapshots, label files) or copyrighted material."
-  - "Offer a finding the terminology server did not return."
-  - "Use the application for real patient data or clinical decisions."
-
+- Send anything that looks like personal data to an outside service.
+- Publish SNOMED CT content (snapshots, label files) or copyrighted material.
+- Offer a finding the terminology server did not return.
+- Use the application for real patient data or clinical decisions.
 open_questions:
-  - "Owner to confirm the rules and the examples (not yet done)."
+- Owner to confirm the rules and the examples (not yet done).
+- Rule texts and examples were written by the AI assistant (see docs/build-record.yaml).

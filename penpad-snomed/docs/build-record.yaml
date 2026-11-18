@@ -11,8 +11,8 @@ gates:
   workshop:      {status: not_started, missing: "no workshop with a second person"}
   specification: {status: not_started, artifact: "docs/specification.yaml (draft)", missing: "owner sign-off; 10 rules exceed the advised 8"}
   design:        {status: not_started, artifact: "docs/design.md, docs/adr/ADR-001..004", missing: "owner approval of ADRs"}
-  build:         {status: met,         artifact: "git log (11 commits on 2026-11-18)", date: 2026-11-18}
-  prove:         {status: failed,      artifact: "tests/*, e2e.cjs", missing: "independent oracle: the 14-phrase gold set and labels.json were written by the assistant, not by a human other than the builder; e2e not run in CI", note: "tests pass, but the gate requires an independent oracle"}
+  build:         {status: met,         artifact: "git log (all commits dated 2026-11-18)", date: 2026-11-18}
+  prove:         {status: failed,      artifact: "tests/*, e2e.cjs (browser, not in CI), audit-en.cjs", missing: "independent oracle: the 14-phrase gold set and labels.json were written by the assistant, not by a human other than the builder; e2e not run in CI", note: "tests pass, but the gate requires an independent oracle"}
   secure:        {status: not_started, artifact: "tools/scan_secrets.py, tools/check_dependencies.py, dependency-policy.yaml", missing: "all reviewers are 'pending'; no third-party review"}
   ship:          {status: not_started, artifact: ".github/workflows/pages.yml", missing: "first run of the pinned pipeline not yet verified; no tag/release"}
   run:           {status: not_started, artifact: "docs/runbook.md", missing: "no monitoring; no one else has run the runbook"}
@@ -24,8 +24,9 @@ deviations:
   - "Tests and eval labels were written by the same assistant that built the code (not an independent oracle)."
   - "Two early commits held files with SNOMED terms (docs/eval-candidates.json, the first tests/fixtures/labels.json). On 2026-11-18 the owner approved a history rewrite: both files were removed from all commits on main and the dev branch and force-pushed; the neutral labels.json was re-added. Old commits may stay reachable on GitHub until GitHub support purges them, and in any clones made before; a backup bundle was kept outside the repository."
   - "Pinned action SHAs obtained from git ls-remote; unverified until a run passes."
+  - "Features added later in the session (close-ups, aspects, list, several findings per sentence, general symptoms, English check) were built and tested by the same assistant; none has been reviewed by a person. The two heuristics with the most risk are the body-word lists (our own, unreviewed) and the ranking thresholds (tuned on our own phrases)."
   - "Tier-proportionality table and chapters 5, 6, 9, 17, 22 of the book were not read when this record was made."
-  - "make_artifact.py and the private artifact are stale."
+  - "tools/make_artifact.py was removed (it bundled a local SNOMED snapshot into an artifact). The two private claude.ai artifacts made early in the session are stale and may hold SNOMED terms; the owner should delete them."
 
 ai_review:
   - {date: 2026-11-18, by: "fresh AI subagent, given the code only", approval: false, findings_fixed: "guard bypass (separators, dashes, full-width digits, phone, spelled-out e-mail), Google Fonts removed, CI permissions scoped per job, persist-credentials false, spec R6 method corrected", findings_open: "guard cannot detect names or addresses; spec check proves test existence, not that a test exercises the rule; e2e not in CI; clientCandidates untested in unit tests"}

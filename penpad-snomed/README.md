@@ -73,7 +73,7 @@ All of this was run, see `tests/`.
 - **Swedish terms are real SNOMED CT** (Swedish module via `displayLanguage=sv`), not translations of ours. Where the module has
   no term the English term is shown and the UI says so.
 - **English check:** `node tests/audit-en.cjs <url>` drives the whole app in English (examples, every region and close-up, aspect, list, several findings, warnings) and reports any visible line with Swedish text; `AUDIT_SELFTEST=1` shows that it does find Swedish on the Swedish page. `tests/i18n.test.mjs` checks that both languages have the same text keys. The local snapshot mode has no synonyms, so three English phrases that need them are only checked against the live terminology server.
-- **Tests:** 65 JavaScript (`node --test tests/*.test.mjs`), 30 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 62
+- **Tests:** 71 JavaScript (`node --test tests/*.test.mjs`), 30 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 65
   browser checks run in **each of the modes** (`node tests/e2e.cjs <url> <dir>`, needs Playwright; set `HTTPS_PROXY` if
   outbound HTTPS needs a proxy). The unit tests use neutral fixture labels in our own words, not SNOMED terms.
 - **Candidate finder, own check on 14 phrases** (`backend/eval_candidates.py`, **our own labels, not a benchmark**; the
@@ -108,7 +108,9 @@ from scratch** (`web/headsection.js`, simple shapes, not traced from anything). 
 
 **General symptoms ("whole body").** Findings that have no body part are a third topic, *general*: fever, fatigue, nausea, vomiting, dizziness, cough, rash, dyspnoea, itching, diarrhoea, constipation and loss of appetite (SNOMED CT concepts and their subtypes, verified against the server). They are reached by typing ("fever and cough for three days") or by the *Whole body* button next to the map, which lists the twelve main symptoms. A later part of a sentence that has no body word but words of its own is tried as a finding of its own; if nothing matches it goes back to the finding before it. If a body part is named and nothing matches inside it ("rash on both arms"), the app says so instead of offering an unrelated finding.
 
-**Aspect of a site (the body's counterpart of a tooth surface).** In dentistry a finding is placed on a tooth *and* a surface (mesial, distal ...). The same method is used for the whole body: after the site (and side), the **aspect** can be chosen: anterior, posterior, medial, lateral, proximal, distal (SNOMED CT qualifier values, checked against the server; superior and inferior under *more*). It is chosen next to the map or in the form, or read from typed text ("lateral", "medialt"). It appears in the sentence and as a FHIR extension. In the SNOMED expression it is kept as a comment, because the SNOMED CT model has no attribute to attach it to, and the openEHR mapping we follow has no node for it, so it is listed as unmapped. Some body parts also have ready-made aspect concepts (e.g. *anterior aspect of knee*); using those is not done yet.
+**Save and open the list.** *Save the list* writes a small JSON file with codes and answers only (no names, no SNOMED text); *Open a saved list* reads it back, checks every entry (codes, topics, slots, durations; at most 50 entries, 200 kB) and fetches the names again from the terminology server. The page itself stores nothing. The FHIR output for a list is a Bundle with a demo Patient and a demo Encounter that the Conditions refer to.
+
+**Aspect of a site (the body's counterpart of a tooth surface).** In dentistry a finding is placed on a tooth *and* a surface (mesial, distal ...). The same method is used for the whole body: after the site (and side), the **aspect** can be chosen: anterior, posterior, medial, lateral, proximal, distal (SNOMED CT qualifier values, checked against the server; superior and inferior under *more*). It is chosen next to the map or in the form, or read from typed text ("lateral", "medialt"). It appears in the sentence and as a FHIR extension. In the SNOMED expression it is kept as a comment, because the SNOMED CT model has no attribute to attach it to, and the openEHR mapping we follow has no node for it, so it is listed as unmapped. Some body parts also have ready-made aspect concepts (e.g. *Anterior aspect of knee*, *Medial aspect of ankle*): when one exists under the finding's site it is shown as information (a comment in the expression, an extra FHIR body site, a row in the code table), but the finding's own site is never replaced.
 30 regions are defined in `backend/topics.json` (`bodymap`). Findings with a non-regional site (skin, muscle, nerve ...) are
 reached by text or the search box.
 
@@ -151,7 +153,7 @@ backend/   tx.py (FHIR client + disk cache)  rank.py  verify_topics.py  build_sn
 web/       index.html  app.js  extract.js (free text -> slots)  generators.js  lexrank.js  txclient.js (browser FHIR client)
            bodymap.js  vendor/bodypaths.js (generated, MIT)  data/snapshot.json (generated, not committed)
 tests/     *.test.mjs  test_*.py  e2e.cjs  fixtures/labels.json (neutral labels)
-tools/     build_site.py  publish_site.py  build_body_paths.py  make_artifact.py  make_test_labels.py  write_notices.py  bbox_parts.cjs
+tools/     build_site.py  publish_site.py  build_body_paths.py  build_zoom_boxes.py  make_test_labels.py  write_notices.py  bbox_parts.cjs
 THIRD_PARTY_NOTICES.md
 ```
 

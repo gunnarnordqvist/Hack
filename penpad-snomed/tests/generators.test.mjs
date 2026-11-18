@@ -124,8 +124,15 @@ test("a list of findings: one expression each, one composition with an observati
   assert.ok(oe.unmapped.every((u) => /^\d+ /.test(u.key)));
   const fb = fhirBundle(states, ctx, { time: T });
   assert.equal(fb.type, "collection");
-  assert.deepEqual(fb.entry.map((e) => e.resource.id), ["demo-condition-1", "demo-condition-2"]);
-  assert.deepEqual(fb.entry.map((e) => e.resource.code.coding[0].code), ["300955002", "25064002"]);
+  const conds = fb.entry.filter((e) => e.resource.resourceType === "Condition").map((e) => e.resource);
+  assert.deepEqual(fb.entry.map((e) => e.resource.resourceType), ["Patient", "Encounter", "Condition", "Condition"]);
+  assert.deepEqual(conds.map((c) => c.id), ["demo-condition-1", "demo-condition-2"]);
+  assert.deepEqual(conds.map((c) => c.code.coding[0].code), ["300955002", "25064002"]);
+  // every reference resolves to an entry of the bundle (by fullUrl)
+  const urls = new Set(fb.entry.map((e) => e.fullUrl));
+  for (const c of conds) for (const ref of [c.subject.reference, c.encounter.reference]) assert.ok(urls.has("https://penpad-snomed.example/fhir/" + ref), ref);
+  assert.equal(fb.entry[1].resource.subject.reference, "Patient/demo-patient");
+  assert.equal(fhirCondition(a, ctx, { time: T }).subject.reference, undefined); // a single Condition carries no reference
   const rows = codesUsedMany([a, a], ctx);
   assert.equal(rows.length, codesUsedMany([a], ctx).length);
   assert.equal(openEhrMany([], ctx).composition, null);
@@ -133,4 +140,19 @@ test("a list of findings: one expression each, one composition with an observati
 
 test("a single FHIR Condition keeps its usual id", () => {
   assert.equal(fhirCondition(thumbState(), ctx, { time: T }).id, "demo-condition");
+});
+
+test("a ready-made aspect structure is information only: comment, extra FHIR body site, extra code row; the site is not replaced", () => {
+  const s = thumbState({ values: { laterality: "7771000", aspect: "255561001" } });
+  s.aspectSite = { code: "182296000", en: "Medial aspect of knee" };
+  const e = expression(s, ctx);
+  assert.match(e, /ready-made structure: 182296000 \|Medial aspect of knee\|/);
+  assert.match(e.split("/*")[0], /76505004/); // the finding site is still the finding's own
+  assert.doesNotMatch(e.split("/*")[0], /182296000/);
+  const f = fhirCondition(s, ctx, { time: T });
+  assert.ok(f.bodySite.some((b) => b.coding[0].code === "182296000"));
+  assert.ok(f.bodySite.some((b) => b.coding[0].code === "76505004"));
+  assert.ok(codesUsed(s, ctx).some((r) => r.role === "aspect structure" && r.code === "182296000"));
+  delete s.aspectSite;
+  assert.doesNotMatch(expression(s, ctx), /ready-made/);
 });
