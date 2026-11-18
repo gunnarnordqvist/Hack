@@ -1035,12 +1035,45 @@
     ]
   },
   "examples": [
-    "smärta i vänster tumme sedan två dagar, bultande, måttlig, plötslig debut, sämre",
-    "my thumb hurts, left, since yesterday",
-    "svullen höger fot sedan en vecka, hård",
-    "buksmärta sedan tre dagar, intermittent",
-    "headache since two days, severe, throbbing",
-    "ont i halsen sedan igår",
-    "magont"
+    {
+      "lang": "sv",
+      "text": "smärta i vänster tumme sedan två dagar, bultande, måttlig, plötslig debut, sämre"
+    },
+    {
+      "lang": "en",
+      "text": "my thumb hurts, left, since yesterday"
+    },
+    {
+      "lang": "sv",
+      "text": "svullen höger fot sedan en vecka, hård"
+    },
+    {
+      "lang": "sv",
+      "text": "buksmärta sedan tre dagar, intermittent"
+    },
+    {
+      "lang": "en",
+      "text": "headache since two days, severe, throbbing"
+    },
+    {
+      "lang": "sv",
+      "text": "ont i halsen sedan igår"
+    },
+    {
+      "lang": "sv",
+      "text": "magont"
+    },
+    {
+      "lang": "en",
+      "text": "swollen right foot for a week, hard"
+    },
+    {
+      "lang": "en",
+      "text": "abdominal pain for three days, intermittent"
+    },
+    {
+      "lang": "en",
+      "text": "sore throat since yesterday"
+    }
   ]
 }

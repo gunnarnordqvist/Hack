@@ -119,9 +119,10 @@ const plainSite = (site) => (S.lang === "sv" ? site.sv || site.en : site.en).rep
 const browserLink = (code) => `https://browser.ihtsdotools.org/?perspective=full&conceptId1=${code}&edition=MAIN`;
 
 // ------------------------------------------------------------------------------------------------ data flow
-const examples = () => (S.snap.samples && S.snap.samples.length ? S.snap.samples.map((x) => x.text) : S.snap.cfg.examples || []);
+const examples = () => (S.snap.cfg.examples || []).filter((e) => e.lang === S.lang).map((e) => e.text);
 const liveCheck = () => S.live || S.source === "client";
-const nmI = (it) => (S.lang === "sv" ? it.sv || it.en : it.en || it.sv);
+const nmI = (it) => (S.lang === "sv" ? it.sv || it.en : it.en);
+const inLang = (it) => S.lang !== "en" || !!it.en; // concepts without an English term are not offered in English
 
 function configCodes(cfg) {
   const c = new Set();
@@ -194,11 +195,19 @@ async function clientCandidates(q, k = 5) {
     if (e.sv === e.en) e.sv = null;
     const lex = Math.max(e.en ? lexScore(q, e.en) : 0, e.sv ? lexScore(q, e.sv) : 0);
     const score = lex + 0.25 + boost;
-    S.known.set(e.code, [e.code, e.en || e.sv, e.sv, e.topic]);
     return { ...e, score: +score.toFixed(4), confidence: +Math.min(1, score).toFixed(3), scores: { filter: true, lex: +lex.toFixed(3), emb: null } };
   });
-  rows.sort((a, b) => b.score - a.score || (nmI(a) || "").length - (nmI(b) || "").length);
-  const items = rows.slice(0, k).map((r, i) => ({ ...r, rank: i + 1 }));
+  rows.sort((a, b) => b.score - a.score || (a.en || a.sv || "").length - (b.en || b.sv || "").length);
+  const top = rows.slice(0, 12);
+  const missing = top.filter((r) => !r.en).map((r) => r.code);
+  if (missing.length) {
+    try {
+      const lab = await TX.labelsFor(missing);
+      for (const r of top) if (!r.en && lab[r.code]) { r.en = lab[r.code].en; r.sv = r.sv || lab[r.code].sv; }
+    } catch (_) { /* keep what we have */ }
+  }
+  for (const r of top) S.known.set(r.code, [r.code, r.en, r.sv, r.topic]);
+  const items = top.filter(inLang).slice(0, k).map((r, i) => ({ ...r, rank: i + 1 }));
   return { query: q, mode: "text", items, low_confidence: !items.length || items[0].score < 0.45, model: null, threshold: 0.45 };
 }
 
@@ -223,7 +232,8 @@ async function interpret() {
   try { S.cand = await candidatesFor(S.ex.rest, S.text); }
   catch (e) { S.cand = { query: S.text, mode: "text", items: [], low_confidence: true, error: true }; }
   S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = S.ex.duration; S.expanded = new Set();
-  if (S.cand.items.length && !S.cand.low_confidence) await selectFinding(S.cand.items[0].code, true);
+  const first = S.cand.items.find(inLang);
+  if (first && !S.cand.low_confidence) await selectFinding(first.code, true);
   else render();
 }
 
@@ -256,7 +266,7 @@ async function selectFinding(code, fromText, fromMap) {
   } else {
     site = S.snap.details[code] || null;
   }
-  S.finding = { code, en, sv, topic: u[3], site };
+  S.finding = { code, en: en || sv, sv, topic: u[3], site };
   const vis = new Set(visibleSlots(S.finding));
   S.values = {}; S.prefilled = new Set();
   if (fromText && S.ex) {
@@ -304,7 +314,7 @@ async function ensureRegion(region) {
   }
   bm.findings[region] = [...by.values()].map((e) => {
     if (e.sv === e.en) e.sv = null;
-    S.known.set(e.code, [e.code, e.en || e.sv, e.sv, e.topic]);
+    S.known.set(e.code, [e.code, e.en, e.sv, e.topic]);
     return e.code;
   });
 }
@@ -410,11 +420,12 @@ function mapFindings() {
   const bm = S.snap.bodymap;
   const codes = bm.findings[M.sel.region] || [];
   const rest = S.ex && S.ex.rest;
-  const name = (u) => (S.lang === "sv" ? u[2] || u[1] : u[1] || u[2]);
+  const name = (u) => (S.lang === "sv" ? u[2] || u[1] : u[1]) || "";
   // a chosen side removes findings that name the other side ("left thumb" when the right hand was clicked)
   const other = M.sel.side === "left" ? "right" : M.sel.side === "right" ? "left" : null;
   const rows = codes.map((c) => S.known.get(c)).filter(Boolean).filter((u) => M.topic === "all" || u[3] === M.topic)
     .filter((u) => !other || !mentionsSide([u[1], u[2]], other))
+    .filter((u) => S.lang !== "en" || u[1])
     .map((u) => ({ u, score: rest ? Math.max(lexScore(rest, u[1]), u[2] ? lexScore(rest, u[2]) : 0) : 0 }));
   rows.sort((a, b) => b.score - a.score || name(a.u).localeCompare(name(b.u), S.lang));
   return rows;
@@ -474,16 +485,17 @@ function renderCandidates() {
   if (both) {
     box.append(seg("", [["text", t("baseline")], ["rerank", t("rerank")]], S.candMode, async (m) => { S.candMode = m; S.cand = await candidatesFor(S.ex.rest, S.text); render(); }));
   }
+  const shownItems = S.cand.items.filter(inLang);
   if (S.cand.error) box.append(h("p", { class: "warn" }, t("txError")));
-  else if (!S.cand.items.length) box.append(h("p", { class: "warn" }, t("noMatch")));
+  else if (!shownItems.length) box.append(h("p", { class: "warn" }, t("noMatch")));
   else if (S.cand.low_confidence) box.append(h("p", { class: "warn" }, "⚠ " + t("lowConf")));
   const list = h("ul", { class: "cands" });
-  for (const it of S.cand.items.slice(0, 5)) {
+  for (const it of shownItems.slice(0, 5)) {
     const sel = S.finding && S.finding.code === it.code;
     const det = S.snap.details[it.code];
     list.append(h("li", { class: "cand" + (sel ? " sel" : "") },
       h("div", { class: "cmain" },
-        h("div", { class: "cname" }, h("strong", {}, nmI(it)), it.sv && it.en ? h("span", { class: "alt" }, S.lang === "sv" ? it.en : it.sv) : null),
+        h("div", { class: "cname" }, h("strong", {}, nmI(it)), S.lang === "sv" && it.sv && it.en ? h("span", { class: "alt" }, it.en) : null),
         h("div", { class: "cmeta" },
           h("a", { href: browserLink(it.code), target: "_blank", rel: "noopener", class: "mono" }, it.code),
           det ? h("span", {}, `${t("site")}: ${plainSite(det)} (${det.lateralizable ? t("sided") : t("notSided")})`) : null,
@@ -492,14 +504,14 @@ function renderCandidates() {
       h("button", { type: "button", class: sel ? "ghost" : "primary small", onclick: () => selectFinding(it.code, true) }, sel ? t("picked") : t("pick"))));
   }
   box.append(list);
-  if (S.cand.low_confidence || !S.cand.items.length) box.append(manualSearch());
+  if (S.cand.low_confidence || !shownItems.length) box.append(manualSearch());
 }
 
 function manualSearch() {
   const wrap = h("div", { class: "manual" });
   const input = h("input", { type: "search", id: "manual", placeholder: t("search"), value: S.manual, "aria-label": t("search") });
   const out = h("ul", { class: "cands small" });
-  const draw = (items) => out.replaceChildren(...items.map((it) => h("li", { class: "cand" }, h("div", { class: "cmain" }, h("strong", {}, nmI(it)), h("span", { class: "mono dim" }, it.code)),
+  const draw = (items) => out.replaceChildren(...items.filter(inLang).map((it) => h("li", { class: "cand" }, h("div", { class: "cmain" }, h("strong", {}, nmI(it)), h("span", { class: "mono dim" }, it.code)),
     h("button", { type: "button", class: "primary small", onclick: () => selectFinding(it.code, true) }, t("pick")))));
   let timer = null;
   const run = () => {
