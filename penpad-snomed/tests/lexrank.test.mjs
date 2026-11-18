@@ -25,3 +25,10 @@ test("token overlap scoring", () => {
   assert.equal(lexScore("xyz", "smärta i tumme"), 0);
   assert.equal(lexScore("anything", null), 0);
 });
+
+test("filler words are dropped from what is sent to the terminology server", async () => {
+  const { contentWords } = await import("../web/lexrank.js");
+  assert.equal(contentWords("Pain in the knee"), "pain knee");
+  assert.equal(contentWords("ont i tummen"), "ont tummen");
+  assert.equal(contentWords("in the"), "");
+});

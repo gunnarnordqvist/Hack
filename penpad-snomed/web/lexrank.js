@@ -4,6 +4,11 @@
 const STOP = new Set(["i", "på", "av", "och", "en", "ett", "med", "om", "har", "jag", "min", "mitt", "mina", "det", "den", "är",
   "the", "in", "of", "a", "an", "my", "have", "has", "is", "and", "with", "on", "at", "to"]);
 
+/** The words of a query without filler words ("pain in the knee" -> "pain knee"): what is sent to the terminology server's text filter. */
+export function contentWords(t) {
+  return (t || "").toLowerCase().normalize("NFC").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w && !STOP.has(w)).join(" ");
+}
+
 export function stems(t) {
   return (t || "").toLowerCase().normalize("NFC").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/)
     .filter((w) => w.length >= 2 && !STOP.has(w)).map((w) => w.slice(0, 5));

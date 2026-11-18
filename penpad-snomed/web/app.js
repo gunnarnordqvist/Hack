@@ -4,7 +4,7 @@
 
 import { extract, buildPhrases } from "./extract.js";
 import { sentence, expression, openEhr, fhirCondition, codesUsed, term } from "./generators.js";
-import { rankLexical, lexScore } from "./lexrank.js";
+import { rankLexical, lexScore, contentWords } from "./lexrank.js";
 import { drawBodyMap, ZOOMABLE, mainViewFor, drawnIn, sideOfCode, mentionsSide } from "./bodymap.js";
 import * as TX from "./txclient.js";
 import { personalDataReason, PERSONAL_DATA_ERROR } from "./guard.js";
@@ -183,22 +183,25 @@ async function init() {
 /** Candidates straight from the server: its text filter in English and Swedish, ranked by token overlap. No model. */
 async function clientCandidates(q, k = 5) {
   const calls = [];
+  const words = contentWords(q) || q; // filler words ("in", "the", "i", "på") make the server's text filter match far too much
   for (const tp of S.snap.cfg.topics) for (const lang of ["en", "sv"]) {
-    calls.push(TX.expand(tp.ecl, { filter: q, lang, count: 40 }).then((r) => ({ tp, lang, r })).catch(() => null));
+    calls.push(TX.expand(tp.ecl, { filter: words, lang, count: 40, designations: true }).then((r) => ({ tp, lang, r })).catch(() => null));
   }
   const got = (await Promise.all(calls)).filter(Boolean);
   if (!got.length) throw new TX.TxError("no answer");
   const by = new Map();
-  for (const { tp, lang, r } of got) for (const it of r.items) {
-    const e = by.get(it.code) || { code: it.code, en: null, sv: null, topic: tp.id };
+  for (const { tp, lang, r } of got) r.items.forEach((it, idx) => {
+    const e = by.get(it.code) || { code: it.code, en: null, sv: null, topic: tp.id, srv: 1, names: [] };
+    e.names.push(...(it.names || []));
+    e.srv = Math.min(e.srv, idx / Math.max(1, r.items.length)); // the server's own order (0 = first) breaks ties between equally good names
     e[lang] = it.display;
     by.set(it.code, e);
-  }
+  });
   const boost = Math.min(0.3, 0.3 / Math.max(1, by.size));
   const rows = [...by.values()].map((e) => {
     if (e.sv === e.en) e.sv = null;
-    const lex = Math.max(e.en ? lexScore(q, e.en) : 0, e.sv ? lexScore(q, e.sv) : 0);
-    const score = lex + 0.25 + boost;
+    const lex = Math.max(e.en ? lexScore(q, e.en) : 0, e.sv ? lexScore(q, e.sv) : 0, ...e.names.map((n) => lexScore(q, n)));
+    const score = lex + 0.25 + boost + 0.08 * (1 - e.srv);
     return { ...e, score: +score.toFixed(4), confidence: +Math.min(1, score).toFixed(3), scores: { filter: true, lex: +lex.toFixed(3), emb: null } };
   });
   rows.sort((a, b) => b.score - a.score || (a.en || a.sv || "").length - (b.en || b.sv || "").length);

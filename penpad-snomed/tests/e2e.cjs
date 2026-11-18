@@ -119,7 +119,7 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   // 6b2. personal data guard: a text with an identity number is refused and no request carries it
   const leaked = [];
   page.on("request", (r) => { if (/121212/.test(decodeURIComponent(r.url()))) leaked.push(r.url()); });
-  await page.fill("#text", "ont i tummen 121212-1212");
+  await page.fill("#text", "ont i magen 121212-1212");
   await page.click("#go");
   await page.waitForSelector("#cand-error", { timeout: 60000 });
   check("personal data guard: warning shown", /personuppgift/i.test(await page.textContent("#cand-error")));
@@ -127,9 +127,9 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
 
   // 6c. English UI: suggestions, map list and examples are in English
   await page.click('.segbtn:has-text("EN")');
-  await page.fill("#text", "ont i tummen");
+  await page.fill("#text", "ont i magen");
   await page.click("#go");
-  await page.waitForFunction(() => window.__penpad.cand && window.__penpad.cand.query === "ont i tummen" && window.__penpad.finding, null, { timeout: 60000 });
+  await page.waitForFunction(() => window.__penpad.cand && window.__penpad.cand.query === "ont i magen" && window.__penpad.finding, null, { timeout: 60000 });
   const shownNames = await page.$$eval(".cands .cname strong", (n) => n.map((x) => x.textContent));
   const enNames = await page.evaluate(() => window.__penpad.cand.items.filter((i) => i.en).slice(0, 5).map((i) => i.en));
   check("English UI: suggestions are shown in English", shownNames.length > 0 && JSON.stringify(shownNames) === JSON.stringify(enNames), shownNames.join(" | "));
@@ -166,6 +166,8 @@ const check = (name, ok, extra = "") => { checks.push({ name, ok }); console.log
   await page.waitForFunction(() => window.__penpad.finding, null, { timeout: 60000 });
   const f = await page.evaluate(() => ({ code: window.__penpad.finding.code, vals: window.__penpad.values, dur: window.__penpad.duration }));
   console.log("typed finding:", JSON.stringify(f));
+  if ((await page.evaluate(() => window.__penpad.source)) === "client")
+    check("English knee pain: the general concept is first, not a narrower one", (await page.evaluate(() => window.__penpad.cand.items[0].en)) === "Pain of knee region");
   check("typed text prefilled severity/pattern/duration", f.vals.severity === "24484000" && f.vals.pattern === "7087005" && f.dur && f.dur.n === 3);
 
   // 10. phone width
