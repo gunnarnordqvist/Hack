@@ -105,6 +105,7 @@ export function codesUsed(state, ctx) {
   const rows = [{ code: state.finding.code, role: "finding" }];
   if (state.finding.site) rows.push({ code: state.finding.site.code, role: "finding site" });
   for (const [slot, c] of Object.entries(state.values)) if (c) rows.push({ code: c, role: slot });
+  if (state.aspectSite && state.values.aspect) rows.push({ code: state.aspectSite.code, role: "aspect structure" });
   return rows;
 }
 
@@ -128,7 +129,8 @@ export function expression(state, ctx) {
   const focus = `${f.code} |${f.en}|`;
   const body = refinements.length ? `${focus} :\n  ${refinements.join(",\n  ")}` : focus;
   // the SNOMED CT model has no attribute for an aspect of a body structure, so it is kept as a comment and not claimed as part of the meaning
-  return v.aspect && f.site ? `${body}\n/* aspect of the site: ${ex(v.aspect, labels)} (no attribute for it in the SNOMED CT model; not part of the expression) */` : body;
+  const ready = state.aspectSite && v.aspect ? `; ready-made structure: ${state.aspectSite.code} |${state.aspectSite.en}|` : "";
+  return v.aspect && f.site ? `${body}\n/* aspect of the site: ${ex(v.aspect, labels)}${ready} (no attribute for it in the SNOMED CT model; not part of the expression) */` : body;
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -255,13 +257,15 @@ export function fhirCondition(state, ctx, opts = {}) {
     clinicalStatus: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/condition-clinical", code: "active" }] },
     verificationStatus: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/condition-ver-status", code: "unconfirmed" }] },
     code: { coding: [{ system: SCT, code: f.code, display: f.en }], text: findingTerm(f, lang) },
-    subject: { display: "Demo patient (no real data)" },
+    subject: opts.refs ? { reference: "Patient/demo-patient", display: "Demo patient (no real data)" } : { display: "Demo patient (no real data)" },
+    ...(opts.refs ? { encounter: { reference: "Encounter/demo-encounter" } } : {}),
     recordedDate: (opts.time || new Date().toISOString()).slice(0, 10),
   };
   if (v.severity) r.severity = cc(v.severity, labels, lang);
   const bodySite = [];
   if (f.site) bodySite.push({ coding: [{ system: SCT, code: f.site.code, display: f.site.en }], text: sitePlain(f.site, lang) });
   if (v.laterality && f.site && f.site.lateralizable) bodySite.push(cc(v.laterality, labels, lang));
+  if (state.aspectSite && v.aspect && f.site) bodySite.push({ coding: [{ system: SCT, code: state.aspectSite.code, display: state.aspectSite.en }], text: state.aspectSite.en });
   if (bodySite.length) r.bodySite = bodySite;
   if (state.duration) r.onsetString = `${state.duration.n} ${unitWord(ctx.cfg, state.duration.unit, state.duration.n, "en")} ago (duration entered, no date)`;
   const ext = [];
@@ -291,11 +295,27 @@ export function openEhrMany(states, ctx, opts = {}) {
   return { composition, unmapped };
 }
 
-/** FHIR Bundle (collection) of Conditions, ids demo-condition-1 ... */
+/**
+ * FHIR Bundle (collection): a demo Patient, a demo Encounter and one Condition per finding (ids demo-condition-1 ...), all pointing at the
+ * patient and the encounter by relative references that resolve through the entries' fullUrl.
+ */
 export function fhirBundle(states, ctx, opts = {}) {
+  const base = "https://penpad-snomed.example/fhir/";
+  const entry = (type, id, resource) => ({ fullUrl: `${base}${type}/${id}`, resource });
+  const when = (opts.time || new Date().toISOString());
+  const patient = { resourceType: "Patient", id: "demo-patient", active: true, text: { status: "generated", div: '<div xmlns="http://www.w3.org/1999/xhtml">Demo patient (no real data)</div>' } };
+  const encounter = {
+    resourceType: "Encounter", id: "demo-encounter", status: "in-progress",
+    class: { system: "http://terminology.hl7.org/CodeSystem/v3-ActCode", code: "AMB", display: "ambulatory" },
+    subject: { reference: "Patient/demo-patient" }, period: { start: when },
+  };
   return {
     resourceType: "Bundle", type: "collection",
-    entry: states.map((s, i) => { const id = `demo-condition-${i + 1}`; return { fullUrl: `urn:demo:${id}`, resource: fhirCondition(s, ctx, { ...opts, id }) }; }),
+    entry: [
+      entry("Patient", "demo-patient", patient),
+      entry("Encounter", "demo-encounter", encounter),
+      ...states.map((s, i) => { const id = `demo-condition-${i + 1}`; return entry("Condition", id, fhirCondition(s, ctx, { ...opts, id, refs: true })); }),
+    ],
   };
 }
 

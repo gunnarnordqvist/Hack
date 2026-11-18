@@ -7,11 +7,18 @@
 const DIGIT_GROUP = /\d(?:[\s+\-\u2010-\u2015\u2212.()]*\d)+/g;
 const EMAIL = /[^\s@]+\s*(?:@|[(\[]\s*(?:at|snabel-a)\s*[)\]])\s*[^\s@]+\.[a-z]{2,}/i;
 
-/** @returns {"personnummer"|"email"|null} what the text looks like, or null if nothing suspicious was found */
+// Two capitalised words in a row inside a text ("Anna Svensson") look like a name; a street name with a number looks like an address.
+// Symptom text is written in lower case, so this costs little. The very first word of the text may be capitalised.
+const NAME = /(?<=\S\s)\p{Lu}\p{Ll}{3,}\s+\p{Lu}\p{Ll}{3,}/u;
+const ADDRESS = /(?<![\p{L}])\p{L}{3,}(?:gatan|vägen|gränd|stigen|torget|allén|backen|street|road|avenue|lane|drive)\s+\d+/iu;
+
+/** @returns {"personnummer"|"email"|"name"|"address"|null} what the text looks like, or null if nothing suspicious was found */
 export function personalDataReason(text) {
   const t = String(text || "").normalize("NFKC");
   for (const m of t.match(DIGIT_GROUP) || []) if (m.replace(/\D/g, "").length >= 9) return "personnummer";
   if (EMAIL.test(t)) return "email";
+  if (ADDRESS.test(t)) return "address";
+  if (NAME.test(t)) return "name";
   return null;
 }
 

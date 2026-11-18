@@ -12,6 +12,7 @@ import * as TX from "./txclient.js";
 import { personalDataReason, PERSONAL_DATA_ERROR } from "./guard.js";
 
 import { I } from "./i18n.js";
+import { serializeList, parseList, MAX_BYTES } from "./listio.js";
 
 const S = {
   snap: null, source: "snapshot", known: new Map(), universe: [], optionsLoaded: new Set(), live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
@@ -38,7 +39,7 @@ function h(tag, attrs = {}, ...kids) {
 }
 
 const ctx = () => ({ cfg: S.snap.cfg, labels: S.snap.labels });
-const gstate = () => ({ lang: S.lang, mode: S.mode, finding: S.finding, values: S.values, duration: S.duration });
+const gstate = () => ({ lang: S.lang, mode: S.mode, finding: S.finding, values: S.values, duration: S.duration, aspectSite: aspectSiteOf(S.finding, S.values) });
 const lab = (code) => term(code, S.lang, S.snap.labels);
 const plainSite = (site) => (S.lang === "sv" ? site.sv || site.en : site.en).replace(/,\s*struktur$/i, "").replace(/\s+structure$/i, "");
 const browserLink = (code) => `https://browser.ihtsdotools.org/?perspective=full&conceptId1=${code}&edition=MAIN`;
@@ -492,8 +493,30 @@ async function ensureOptions(slot) {
 }
 
 // ------------------------------------------------------------------------------------------------ rendering
+// ------------------------------------------------------------------------------------------------ ready-made aspect concepts
+// SNOMED CT has structures such as "Anterior aspect of knee" for some body parts. When one exists under the finding's site it is shown
+// as information next to the aspect (comment in the expression, extra FHIR body site); the finding's own site is never replaced.
+S.aspectSites = {};
+function aspectSiteOf(f, values) {
+  if (!f || !f.site || !values || !values.aspect) return null;
+  return S.aspectSites[`${f.site.code}|${values.aspect}`] || null;
+}
+async function lookupAspectSite(f, values) {
+  if (S.source !== "client" || !f || !f.site || !values || !values.aspect) return;
+  const key = `${f.site.code}|${values.aspect}`;
+  if (key in S.aspectSites) return;
+  S.aspectSites[key] = null; // asked once, whatever the answer
+  const word = ((S.snap.labels[values.aspect] || {}).en || "").toLowerCase();
+  if (!word) return;
+  try {
+    const r = await TX.expand(`<< ${f.site.code}`, { filter: `${word} aspect`, lang: "en", count: 20 });
+    const hit = r.items.find((i) => i.display.toLowerCase().startsWith(`${word} aspect of`));
+    if (hit) { S.aspectSites[key] = { code: hit.code, en: hit.display }; renderOutputs(); }
+  } catch (_) { /* the aspect then stays a comment without a ready-made structure */ }
+}
+
 // ------------------------------------------------------------------------------------------------ list of findings
-const entryState = (e) => ({ lang: S.lang, mode: S.mode, finding: e.finding, values: e.values, duration: e.duration });
+const entryState = (e) => ({ lang: S.lang, mode: S.mode, finding: e.finding, values: e.values, duration: e.duration, aspectSite: aspectSiteOf(e.finding, e.values) });
 const allStates = () => S.chart.map(entryState);
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -539,6 +562,43 @@ function chartMarks() {
   return marks;
 }
 
+function saveList() {
+  const blob = new Blob([serializeList(S.chart)], { type: "application/json" });
+  const a = h("a", { href: URL.createObjectURL(blob), download: "penpad-list.json" });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/** Open a saved list: codes and answers are read, names are fetched again from the terminology server. */
+async function importList(file) {
+  const msg = $("#list-msg");
+  const say = (text) => { msg.hidden = !text; msg.textContent = text || ""; };
+  if (file.size > MAX_BYTES) { say(`${t("listProblems")} ${file.name}`); return; }
+  const parsed = parseList(await file.text(), S.snap.cfg);
+  const problems = [...parsed.problems];
+  let added = 0;
+  for (const e of parsed.entries) {
+    try {
+      if (!S.known.has(e.code)) {
+        if (S.source !== "client") { problems.push(`${e.code}: not in this local copy`); continue; }
+        const lab = await TX.labelsFor([e.code]);
+        S.known.set(e.code, [e.code, lab[e.code].en, lab[e.code].sv, e.topic]);
+      }
+      const f = await loadFinding(e.code);
+      if (!f) { problems.push(`${e.code}: unknown`); continue; }
+      f.topic = e.topic;
+      const vis = new Set(visibleSlots(f));
+      const values = Object.fromEntries(Object.entries(e.values).filter(([k]) => vis.has(k)));
+      S.chart.push({ finding: f, values, duration: e.duration });
+      added++;
+    } catch (_) { problems.push(`${e.code}: ${t("txError")}`); }
+  }
+  if (added) S.scope = "all";
+  render();
+  say([added ? `${t("listOpened")} ${added}` : "", problems.length ? `${t("listProblems")} ${problems.join("; ")}` : ""].filter(Boolean).join(" · "));
+  if (liveCheck() && added) validateAll();
+}
+
 function renderChart() {
   const box = $("#chart");
   box.hidden = !S.chart.length;
@@ -549,6 +609,7 @@ function renderChart() {
       h("span", { class: "row tight" },
         h("button", { type: "button", class: "ghost small", "data-edit": String(i), onclick: () => chartEdit(i) }, t("editEntry")),
         h("button", { type: "button", class: "ghost small", "data-remove": String(i), onclick: () => chartRemove(i) }, t("removeEntry")))))),
+    h("button", { type: "button", class: "ghost small", id: "save-list", onclick: saveList, title: t("listNote") }, t("saveList")), " ",
     h("button", { type: "button", class: "ghost small", id: "clear-list", onclick: () => { S.chart = []; S.scope = "one"; resetCurrent(); render(); } }, t("clearList")));
 }
 
@@ -582,17 +643,21 @@ function renderInput() {
       h("h2", { id: "h-in" }, ""),
       h("label", { for: "text", class: "sr" }, "text"),
       h("textarea", { id: "text", rows: "2", spellcheck: "false" }),
-      h("div", { class: "row" }, h("button", { id: "go", type: "button", class: "primary" }, ""), h("button", { id: "rs", type: "button", class: "ghost" }, "")),
+      h("div", { class: "row" }, h("button", { id: "go", type: "button", class: "primary" }, ""), h("button", { id: "rs", type: "button", class: "ghost" }, ""),
+        h("button", { id: "open-list", type: "button", class: "ghost" }, ""), h("input", { id: "import-file", type: "file", accept: "application/json,.json", hidden: true })),
+      h("p", { id: "list-msg", class: "hint", hidden: true }),
       h("p", { id: "notes", class: "hint" }), h("div", { id: "samples", class: "chips" }));
     $("#text").addEventListener("input", (e) => { S.text = e.target.value; });
     $("#text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); interpret(); } });
     $("#go").addEventListener("click", () => interpret());
+    $("#open-list").addEventListener("click", () => $("#import-file").click());
+    $("#import-file").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (f) importList(f); e.target.value = ""; });
     $("#rs").addEventListener("click", () => { S.text = ""; $("#text").value = ""; S.cand = null; S.finding = null; S.values = {}; S.duration = null; S.ex = null; S.map.sel = null; S.map.side = null; S.map.view = S.map.main; S.prefilledMap = new Set(); S.multi = null; render(); });
   }
   $("#h-in").textContent = t("s1");
   $("#text").placeholder = t("ph");
   if ($("#text").value !== S.text) $("#text").value = S.text;
-  $("#go").textContent = t("go"); $("#rs").textContent = t("reset");
+  $("#go").textContent = t("go"); $("#rs").textContent = t("reset"); $("#open-list").textContent = t("openList");
   $("#notes").textContent = t(S.source === "client" ? "localNoteClient" : "localNote");
   $("#samples").replaceChildren(h("span", { class: "seglabel" }, t("tryThese")),
     ...examples().map((txt) => h("button", { type: "button", class: "chip", onclick: () => { S.text = txt; $("#text").value = txt; interpret(); } }, txt.length > 46 ? txt.slice(0, 44) + "…" : txt)));
@@ -864,6 +929,8 @@ function statusCell(code) {
 
 function renderOutputs() {
   const box = $("#outputs");
+  if (S.finding) lookupAspectSite(S.finding, S.values);
+  for (const e of S.chart) lookupAspectSite(e.finding, e.values);
   box.replaceChildren(h("h2", {}, t("s5")));
   if (!S.finding && !S.chart.length) { box.append(h("p", { class: "hint" }, t("pickFinding"))); return; }
   // with a list: one finding or the whole list (the list alone when no finding is open)
