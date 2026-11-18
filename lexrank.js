@@ -4,6 +4,11 @@
 const STOP = new Set(["i", "på", "av", "och", "en", "ett", "med", "om", "har", "jag", "min", "mitt", "mina", "det", "den", "är",
   "the", "in", "of", "a", "an", "my", "have", "has", "is", "and", "with", "on", "at", "to"]);
 
+/** Everyday words for pain become the word the terms use ("my thumb hurts" -> "my thumb pain", "ont i magen" -> "smärta i magen"). */
+export function normalizeSymptoms(t) {
+  return (t || "").replace(/\b(hurts|hurt|hurting|aches|ache|aching)\b/gi, "pain").replace(/(?<![\p{L}])(ont|värker|värkte)(?![\p{L}])/giu, "smärta");
+}
+
 /** The words of a query without filler words ("pain in the knee" -> "pain knee"): what is sent to the terminology server's text filter. */
 export function contentWords(t) {
   return (t || "").toLowerCase().normalize("NFC").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w && !STOP.has(w)).join(" ");
