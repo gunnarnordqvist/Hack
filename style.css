@@ -150,3 +150,11 @@ tr:last-child td { border-bottom: none; }
 .chartlist li.editing { background: var(--accent-soft); }
 .chartlist .entry { flex: 1; }
 button.secondary { font: inherit; padding: 8px 14px; border: 1px solid var(--accent); background: var(--surface); color: var(--accent); border-radius: 8px; cursor: pointer; }
+
+.multi { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; }
+.mitem { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+.mitem.ok { border-color: var(--accent); }
+.mitem .mhead { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.mitem .msent { margin: 6px 0 2px; font-size: 15.5px; }
+.mitem p { margin: 4px 0; }
+.tag.offreg { background: var(--warn-soft); color: var(--warn); }

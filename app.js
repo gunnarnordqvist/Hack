@@ -5,6 +5,7 @@
 import { extract, buildPhrases } from "./extract.js";
 import { sentence, expression, openEhr, fhirCondition, codesUsed, term, expressionMany, openEhrMany, fhirBundle, codesUsedMany } from "./generators.js";
 import { rankLexical, lexScore, contentWords, normalizeSymptoms } from "./lexrank.js";
+import { parseMulti, bodyTable, findBodyWord, aliasOf } from "./multi.js";
 import { drawBodyMap, ZOOM_OF, isZoomView, mainViewFor, drawnIn, sideOfCode, mentionsSide } from "./bodymap.js";
 import * as TX from "./txclient.js";
 import { personalDataReason, PERSONAL_DATA_ERROR } from "./guard.js";
@@ -16,7 +17,7 @@ const I = {
     lang: "Språk", mode: "Läge", clinician: "Klinik", patient: "Patient",
     notices: "Licenser och tredjepartsmaterial", subs: "Delområden", loading: "Laddar…", txError: "Kunde inte nå terminologiservern.",
     clientNote: "Live mot HL7 Nordics terminologiserver, direkt från din webbläsare. Den här sidan lagrar inget SNOMED-innehåll. Ingen modell: förslagen kommer från serverns textfilter.",
-    mapTitle: "…eller peka på kroppen", front: "Fram", back: "Bak", toBody: "← Hela kroppen", chart: "Fynd i listan", addToList: "Lägg till i listan", updateEntry: "Uppdatera i listan", removeEntry: "Ta bort", editEntry: "Ändra", clearList: "Töm listan", scopeOne: "Detta fynd", scopeAll: "Hela listan", legendChart: "finns i listan", chartHint: "Fler fynd? Lägg till det här i listan och välj nästa på kroppen eller i texten.", addedMsg: "Tillagt i listan.", editingNote: "Du ändrar ett fynd i listan.", zoom_leg: "Ben", zoom_headsection: "Huvud och hals, genomskärning", zoom_backzoom: "Rygg, närbild", location: "Plats",
+    mapTitle: "…eller peka på kroppen", front: "Fram", back: "Bak", toBody: "← Hela kroppen", multiFound: "Flera fynd hittades i texten. Varje del har fått sin egen kroppsdel och sina egna värden. Kontrollera dem innan du lägger till.", bodyPart: "Kroppsdel", resolving: "Söker…", noneInPart: "Inget fynd i SNOMED CT för den kroppsdelen matchade orden.", review: "Granska", addOne: "Lägg i listan", addAll: "Lägg alla i listan", siteOk: "platsen hör till kroppsdelen", otherPart: "annan kroppsdel", partMiss: "Inget förslag hör till kroppsdelen du nämnde. Kontrollera förslagen.", chart: "Fynd i listan", addToList: "Lägg till i listan", updateEntry: "Uppdatera i listan", removeEntry: "Ta bort", editEntry: "Ändra", clearList: "Töm listan", scopeOne: "Detta fynd", scopeAll: "Hela listan", legendChart: "finns i listan", chartHint: "Fler fynd? Lägg till det här i listan och välj nästa på kroppen eller i texten.", addedMsg: "Tillagt i listan.", editingNote: "Du ändrar ett fynd i listan.", zoom_leg: "Ben", zoom_headsection: "Huvud och hals, genomskärning", zoom_backzoom: "Rygg, närbild", location: "Plats",
     mapHint: "Klicka på en kroppsdel. Hand, fot och huvud zoomar in. Sidan du klickar på blir patientens sida.",
     findingsHere: "Fynd på vald plats", showMore: "Visa fler", all: "Alla", noFindings: "Inga fynd i listan för den här platsen.",
     fromMap: "ifyllt från kroppskartan", sideL: "vänster", sideR: "höger", legendSel: "vald av dig", legendHl: "plats för valt fynd",
@@ -56,7 +57,7 @@ const I = {
     lang: "Language", mode: "Mode", clinician: "Clinician", patient: "Patient",
     notices: "Licences and third-party material", subs: "Sub-areas", loading: "Loading…", txError: "Could not reach the terminology server.",
     clientNote: "Live against the HL7 Nordics terminology server, straight from your browser. This page stores no SNOMED content. No model: suggestions come from the server text filter.",
-    mapTitle: "…or point at the body", front: "Front", back: "Back", toBody: "← Whole body", chart: "Findings in the list", addToList: "Add to the list", updateEntry: "Update the entry", removeEntry: "Remove", editEntry: "Edit", clearList: "Clear the list", scopeOne: "This finding", scopeAll: "The whole list", legendChart: "in the list", chartHint: "More findings? Add this one to the list and pick the next on the body or in the text.", addedMsg: "Added to the list.", editingNote: "You are editing a finding in the list.", zoom_leg: "Leg", zoom_headsection: "Head and neck, cross-section", zoom_backzoom: "Back, close-up", location: "Site",
+    mapTitle: "…or point at the body", front: "Front", back: "Back", toBody: "← Whole body", multiFound: "Several findings were found in the text. Each part has its own body part and its own values. Check them before adding.", bodyPart: "Body part", resolving: "Searching…", noneInPart: "No finding in SNOMED CT for that body part matched the words.", review: "Review", addOne: "Add to the list", addAll: "Add all to the list", siteOk: "the site belongs to the body part", otherPart: "other body part", partMiss: "No suggestion belongs to the body part you mentioned. Check the suggestions.", chart: "Findings in the list", addToList: "Add to the list", updateEntry: "Update the entry", removeEntry: "Remove", editEntry: "Edit", clearList: "Clear the list", scopeOne: "This finding", scopeAll: "The whole list", legendChart: "in the list", chartHint: "More findings? Add this one to the list and pick the next on the body or in the text.", addedMsg: "Added to the list.", editingNote: "You are editing a finding in the list.", zoom_leg: "Leg", zoom_headsection: "Head and neck, cross-section", zoom_backzoom: "Back, close-up", location: "Site",
     mapHint: "Click a body part. Hand, foot and head zoom in. The side you click becomes the patient's side.",
     findingsHere: "Findings at the chosen site", showMore: "Show more", all: "All", noFindings: "No findings listed for this site.",
     fromMap: "filled from the body map", sideL: "left", sideR: "right", legendSel: "chosen by you", legendHl: "site of the chosen finding",
@@ -95,7 +96,7 @@ const I = {
 const S = {
   snap: null, source: "snapshot", known: new Map(), universe: [], optionsLoaded: new Set(), live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
   finding: null, values: {}, prefilled: new Set(), duration: null, expanded: new Set(), confirmed: false,
-  tab: "expr", validation: {}, manual: "", sampleHit: null, chart: [], editing: null, scope: "one",
+  tab: "expr", validation: {}, manual: "", sampleHit: null, chart: [], editing: null, scope: "one", multi: null,
   map: { view: "front", main: "front", side: null, sel: null, topic: "all", more: false }, prefilledMap: new Set(),
 };
 const CODE_OF_SIDE = { left: "7771000", right: "24028007" };
@@ -240,6 +241,7 @@ async function candidatesFor(rest, rawText) {
 
 async function interpret() {
   S.confirmed = false;
+  S.multi = null;
   if (personalDataReason(S.text)) {
     S.cand = { query: "", items: [], low_confidence: true, error: "personal" };
     S.finding = null; S.values = {}; S.prefilled = new Set(); S.duration = null; S.ex = null;
@@ -247,12 +249,174 @@ async function interpret() {
     return;
   }
   S.ex = extract(S.text, S.snap.cfg, S.snap.labels, S.phrases);
+  // several body parts in one sentence ("ont i armen, handen och huvudet"): one proposal each, checked against its own body part
+  const mp = parseMulti(S.text, S.snap.cfg, S.snap.labels, S.phrases);
+  if (mp.multi) { await startMulti(mp); return; }
   try { S.cand = await candidatesFor(S.ex.rest, S.text); }
   catch (e) { S.cand = { query: S.text, mode: "text", items: [], low_confidence: true, error: e && e.message === PERSONAL_DATA_ERROR ? "personal" : true }; }
+  try { if (!S.cand.error) await applyRegionGuard(); } catch (_) { /* the check needs the server; without it the suggestions stay as they are */ }
   S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = S.ex.duration; S.expanded = new Set();
   const first = S.cand.items.find(inLang);
-  if (first && !S.cand.low_confidence) await selectFinding(first.code, true);
+  if (first && !S.cand.low_confidence && !(S.cand.part && S.cand.part.miss)) await selectFinding(first.code, true);
   else render();
+}
+
+// ------------------------------------------------------------------------------------------------ body part check
+const regionOf = (r) => S.snap.bodymap.regions.find((x) => x.id === r);
+const removeWord = (text, word) => (" " + text + " ").replace(new RegExp(`(?<![\\p{L}])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}])`, "iu"), " ").replace(/\s+/g, " ").trim();
+
+const sitesOf = (regions) => regions.flatMap((r) => S.snap.cfg.bodymap.regions.find((x) => x.id === r)?.codes || []).map((c) => `<< ${c}`).join(" OR ");
+
+/** Which of these finding codes have their finding site inside the given body regions? (SNOMED is-a on the site, asked of the server.) */
+async function inRegionCodes(codes, regions) {
+  if (S.source !== "client") {
+    const set = new Set(regions.flatMap((r) => S.snap.bodymap.findings[r] || []));
+    return new Set(codes.filter((c) => set.has(c)));
+  }
+  if (!codes.length) return new Set();
+  const attr = S.snap.cfg.meta.attributes.findingSite;
+  const r = await TX.expand(`(${codes.join(" OR ")}) : ${attr} = (${sitesOf(regions)})`, { lang: "en", count: codes.length });
+  return new Set(r.items.map((i) => i.code));
+}
+
+/**
+ * Findings whose site is inside the given body regions and whose names fit the words, best first: [{code, en, sv, topic, sc}].
+ * The server's text filter is given the body word only (in its base form); the region is a constraint on the finding site, so the
+ * result can never be about another body part.
+ */
+async function searchInRegions(regions, p) {
+  const attr = S.snap.cfg.meta.attributes.findingSite;
+  const sites = sitesOf(regions);
+  const q = normalizeSymptoms(p.query);
+  const findingWords = contentWords(p.bodyWord ? removeWord(q, p.bodyWord) : q);
+  const partWords = [...regions.flatMap((r) => [regionOf(r)?.label.sv, regionOf(r)?.label.en]), ...(p.base || [])].filter(Boolean);
+  const calls = [];
+  if (S.source === "client") {
+    for (const tp of S.snap.cfg.topics) for (const lang of ["en", "sv"]) {
+      const word = p.base && p.base.length ? p.base[lang === "sv" ? 0 : 1] : p.bodyWord;
+      calls.push(TX.expand(`(${tp.ecl}) : ${attr} = (${sites})`, { filter: word, lang, count: 60, designations: true }).then((r) => ({ tp, lang, r })).catch(() => null));
+    }
+  }
+  const got = (await Promise.all(calls)).filter(Boolean);
+  const by = new Map();
+  for (const { tp, lang, r } of got) for (const it of r.items) {
+    const e = by.get(it.code) || { code: it.code, en: null, sv: null, topic: tp.id, names: [] };
+    e[lang] = it.display; e.names.push(...(it.names || []));
+    by.set(it.code, e);
+  }
+  if (S.source !== "client") { // the snapshot already holds the findings of every region
+    for (const c of await inRegionCodes([...new Set(regions.flatMap((r) => S.snap.bodymap.findings[r] || []))], regions)) {
+      const u = S.known.get(c); if (u) by.set(c, { code: c, en: u[1], sv: u[2], topic: u[3], names: [] });
+    }
+  }
+  const rows = [];
+  for (const e of by.values()) {
+    if (e.sv === e.en) e.sv = null;
+    if (S.lang === "en" && !e.en) continue;
+    S.known.set(e.code, [e.code, e.en, e.sv, e.topic]);
+    const names = [e.en, e.sv, ...e.names].filter(Boolean);
+    const sc = Math.max(...names.map((n) => lexScore(q, n)), ...partWords.flatMap((w) => names.map((n) => lexScore(`${findingWords} ${w}`, n))));
+    rows.push({ code: e.code, en: e.en, sv: e.sv, topic: e.topic, sc, len: (nmI(e) || "").length });
+  }
+  rows.sort((a, b) => b.sc - a.sc || a.len - b.len);
+  return rows;
+}
+
+/** One typed finding that names a body part: suggestions inside that body part come first, the others are marked. */
+async function applyRegionGuard() {
+  S.cand.part = null;
+  const alias = aliasOf(S.ex.rest, S.snap.cfg);
+  const bw = alias ? { word: alias.bodyWord, regions: alias.regions, base: [] } : findBodyWord(S.ex.rest, bodyTable(S.snap.cfg));
+  if (!bw) return;
+  // suggestions found inside the body part itself (the text filter alone may miss them, e.g. "handen" is not a word start of "hand")
+  const own = (await searchInRegions(bw.regions, { query: alias ? alias.query : S.ex.rest, bodyWord: alias ? alias.bodyWord : bw.word, base: bw.base })).filter((r) => r.sc >= 0.45).slice(0, 5);
+  const items = [...own.map((r) => ({ code: r.code, en: r.en, sv: r.sv, topic: r.topic, score: +r.sc.toFixed(4), confidence: +Math.min(1, r.sc).toFixed(3), scores: { filter: true, lex: +r.sc.toFixed(3), emb: null }, inRegion: true })),
+    ...S.cand.items.filter((i) => !own.some((o) => o.code === i.code))];
+  const rest = items.filter((i) => i.inRegion === undefined);
+  if (rest.length) { const inside = await inRegionCodes(rest.map((i) => i.code), bw.regions); for (const i of rest) i.inRegion = inside.has(i.code); }
+  S.cand.items = [...items.filter((i) => i.inRegion), ...items.filter((i) => !i.inRegion)].map((i, n) => ({ ...i, rank: n + 1 }));
+  const top = S.cand.items.find(inLang);
+  S.cand.low_confidence = !top || !((top.score ?? 0) >= (S.cand.threshold ?? 0.45));
+  S.cand.part = { word: bw.word, regions: bw.regions, miss: !S.cand.items.some((i) => i.inRegion) };
+}
+
+/** One proposal from a multi-finding text -> {status: ok|none, entry}. The finding must have its site inside the proposal's body part. */
+async function resolveProposal(p) {
+  const out = { p, status: "none", entry: null };
+  try {
+    let code = null;
+    if (p.regions) {
+      const best = (await searchInRegions(p.regions, p))[0];
+      if (best && best.sc >= 0.45) code = best.code;
+    } else {
+      const cand = await candidatesFor(p.query, p.query);
+      const first = cand.items.find(inLang);
+      if (first && !cand.low_confidence) code = first.code;
+    }
+    if (!code) return out;
+    const f = await loadFinding(code);
+    if (!f) return out;
+    const regs = f.site ? S.snap.bodymap.siteRegions[f.site.code] || [] : [];
+    if (p.regions && !regs.some((r) => p.regions.includes(r))) return out; // the site is not inside the body part that was said
+    const vis = new Set(visibleSlots(f));
+    const values = {};
+    for (const [slot, c] of Object.entries(p.values)) if (vis.has(slot)) values[slot] = c;
+    return { p, status: "ok", entry: { finding: f, values, duration: p.duration || null } };
+  } catch (e) { return out; }
+}
+
+async function startMulti(mp) {
+  const m = { items: mp.entries.map((p) => ({ p, status: "resolving", entry: null })) };
+  S.multi = m;
+  S.cand = null; S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = null; S.confirmed = false;
+  render();
+  await Promise.all(m.items.map(async (it) => { Object.assign(it, await resolveProposal(it.p)); if (S.multi === m) renderCandidates(); }));
+  if (S.multi === m && liveCheck()) validateAll();
+}
+
+function multiAdd(idxs) {
+  const m = S.multi;
+  if (!m) return;
+  for (const i of idxs) if (m.items[i]?.status === "ok") S.chart.push(clone(m.items[i].entry));
+  m.items = m.items.filter((_, i) => !idxs.includes(i));
+  S.scope = "all";
+  if (!m.items.length) { S.multi = null; resetCurrent(); }
+  render();
+}
+
+function multiReview(i) {
+  const it = S.multi?.items[i];
+  if (!it || it.status !== "ok") return;
+  S.finding = clone(it.entry.finding); S.values = clone(it.entry.values); S.duration = it.entry.duration ? clone(it.entry.duration) : null;
+  S.prefilled = new Set(Object.keys(S.values)); S.prefilledMap = new Set(); S.confirmed = false; S.editing = null;
+  S.multi.items.splice(i, 1);
+  if (!S.multi.items.length) S.multi = null;
+  focusMapOn(S.finding);
+  render();
+  $("#form").scrollIntoView({ behavior: "smooth" });
+}
+
+function renderMulti(box) {
+  const items = S.multi.items;
+  box.append(h("p", { class: "hint", id: "multi-note" }, t("multiFound")));
+  const ul = h("ul", { class: "multi" });
+  items.forEach((it, i) => {
+    const parts = (it.p.regions || []).map(regionLabel).join(" / ");
+    let body;
+    if (it.status === "resolving") body = h("p", { class: "hint" }, t("resolving"));
+    else if (it.status === "ok") body = [h("p", { class: "msent" }, sentence(entryState(it.entry), ctx()).text),
+      h("p", { class: "hint" }, "✓ " + t("siteOk") + (it.entry.finding.site ? ": " + plainSite(it.entry.finding.site) : ""))];
+    else body = h("p", { class: "warn" }, t("noneInPart"));
+    ul.append(h("li", { class: "mitem " + it.status, "data-multi": String(i) },
+      h("div", { class: "mhead" }, h("strong", {}, it.p.clause), parts ? h("span", { class: "dim" }, `${t("bodyPart")}: ${parts}`) : null),
+      body,
+      it.status === "ok" ? h("div", { class: "row tight" },
+        h("button", { type: "button", class: "primary small", "data-add-one": String(i), onclick: () => multiAdd([i]) }, t("addOne")),
+        h("button", { type: "button", class: "ghost small", "data-review": String(i), onclick: () => multiReview(i) }, t("review"))) : null));
+  });
+  box.append(ul);
+  const ok = items.map((it, i) => (it.status === "ok" ? i : -1)).filter((i) => i >= 0);
+  if (ok.length > 1) box.append(h("button", { type: "button", class: "primary", id: "add-all", onclick: () => multiAdd(ok) }, `${t("addAll")} (${ok.length})`));
 }
 
 function visibleSlots(f) {
@@ -270,21 +434,30 @@ async function ensureSiteRegions(site) {
   bm.siteRegions[site] = (S.snap.cfg.bodymap.specificity || []).filter((rid) => regions.find((r) => r.id === rid)?.codes.some((c) => anc.has(c)));
 }
 
-async function selectFinding(code, fromText, fromMap) {
+/** Names and finding site of a finding (from the server in client mode). Throws on a server error. */
+async function loadFinding(code) {
   const u = S.known.get(code);
-  if (!u) return;
+  if (!u) return null;
   let en = u[1], sv = u[2], site = null;
   if (S.source === "client") {
-    try {
-      const [lab, s2] = await Promise.all([TX.labelsFor([code]), TX.findingDetails(code, S.snap.cfg.meta.refsets.lateralizable)]);
-      en = lab[code].en || en; sv = lab[code].sv; site = s2;
-      if (site) { S.snap.details[code] = site; await ensureSiteRegions(site.code); }
-      S.known.set(code, [code, en, sv, u[3]]);
-    } catch (e) { $("#cands").append(h("p", { class: "warn" }, t("txError"))); return; }
+    const [lab, s2] = await Promise.all([TX.labelsFor([code]), TX.findingDetails(code, S.snap.cfg.meta.refsets.lateralizable)]);
+    en = lab[code].en || en; sv = lab[code].sv; site = s2;
+    if (site) { S.snap.details[code] = site; await ensureSiteRegions(site.code); }
+    S.known.set(code, [code, en, sv, u[3]]);
   } else {
     site = S.snap.details[code] || null;
   }
-  S.finding = { code, en: en || sv, sv, topic: u[3], site };
+  return { code, en: en || sv, sv, topic: u[3], site };
+}
+
+async function selectFinding(code, fromText, fromMap) {
+  const u = S.known.get(code);
+  if (!u) return;
+  let loaded;
+  try { loaded = await loadFinding(code); }
+  catch (e) { $("#cands").append(h("p", { class: "warn" }, t("txError"))); return; }
+  const { en, sv, site } = loaded;
+  S.finding = loaded;
   const vis = new Set(visibleSlots(S.finding));
   S.values = {}; S.prefilled = new Set();
   if (fromText && S.ex) {
@@ -365,7 +538,7 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
 
 function resetCurrent() {
   S.text = ""; S.cand = null; S.finding = null; S.values = {}; S.prefilled = new Set(); S.prefilledMap = new Set(); S.duration = null; S.ex = null; S.confirmed = false;
-  S.map.sel = null; S.map.side = null; S.map.view = S.map.main; S.editing = null;
+  S.map.sel = null; S.map.side = null; S.map.view = S.map.main; S.editing = null; S.multi = null;
 }
 
 function chartAdd() {
@@ -453,7 +626,7 @@ function renderInput() {
     $("#text").addEventListener("input", (e) => { S.text = e.target.value; });
     $("#text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); interpret(); } });
     $("#go").addEventListener("click", () => interpret());
-    $("#rs").addEventListener("click", () => { S.text = ""; $("#text").value = ""; S.cand = null; S.finding = null; S.values = {}; S.duration = null; S.ex = null; S.map.sel = null; S.map.side = null; S.map.view = S.map.main; S.prefilledMap = new Set(); render(); });
+    $("#rs").addEventListener("click", () => { S.text = ""; $("#text").value = ""; S.cand = null; S.finding = null; S.values = {}; S.duration = null; S.ex = null; S.map.sel = null; S.map.side = null; S.map.view = S.map.main; S.prefilledMap = new Set(); S.multi = null; render(); });
   }
   $("#h-in").textContent = t("s1");
   $("#text").placeholder = t("ph");
@@ -580,6 +753,7 @@ function bar(v) { return h("span", { class: "bar", "aria-hidden": "true" }, h("i
 function renderCandidates() {
   const box = $("#cands");
   box.replaceChildren(h("h2", {}, t("s2")));
+  if (S.multi) { renderMulti(box); return; }
   if (!S.cand) { box.append(h("p", { class: "hint" }, t("nothing"))); return; }
   const both = S.live || (S.sampleHit && S.sampleHit.candidates.rerank);
   if (both) {
@@ -588,6 +762,7 @@ function renderCandidates() {
   const shownItems = S.cand.items.filter(inLang);
   if (S.cand.error) box.append(h("p", { class: "warn", id: "cand-error" }, t(S.cand.error === "personal" ? "personal" : "txError")));
   else if (!shownItems.length) box.append(h("p", { class: "warn" }, t("noMatch")));
+  else if (S.cand.part && S.cand.part.miss) box.append(h("p", { class: "warn", id: "part-miss" }, "⚠ " + t("partMiss")));
   else if (S.cand.low_confidence) box.append(h("p", { class: "warn" }, "⚠ " + t("lowConf")));
   const list = h("ul", { class: "cands" });
   for (const it of shownItems.slice(0, 5)) {
@@ -595,7 +770,8 @@ function renderCandidates() {
     const det = S.snap.details[it.code];
     list.append(h("li", { class: "cand" + (sel ? " sel" : "") },
       h("div", { class: "cmain" },
-        h("div", { class: "cname" }, h("strong", {}, nmI(it)), S.lang === "sv" && it.sv && it.en ? h("span", { class: "alt" }, it.en) : null),
+        h("div", { class: "cname" }, h("strong", {}, nmI(it)), S.lang === "sv" && it.sv && it.en ? h("span", { class: "alt" }, it.en) : null,
+          S.cand.part && it.inRegion === false ? h("span", { class: "tag offreg" }, t("otherPart")) : null),
         h("div", { class: "cmeta" },
           h("a", { href: browserLink(it.code), target: "_blank", rel: "noopener", class: "mono" }, it.code),
           det ? h("span", {}, `${t("site")}: ${plainSite(det)} (${det.lateralizable ? t("sided") : t("notSided")})`) : null,
