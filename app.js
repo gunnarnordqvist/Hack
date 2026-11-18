@@ -5,7 +5,7 @@
 import { extract, buildPhrases } from "./extract.js";
 import { sentence, expression, openEhr, fhirCondition, codesUsed, term } from "./generators.js";
 import { rankLexical, lexScore, contentWords, normalizeSymptoms } from "./lexrank.js";
-import { drawBodyMap, ZOOMABLE, mainViewFor, drawnIn, sideOfCode, mentionsSide } from "./bodymap.js";
+import { drawBodyMap, ZOOM_OF, isZoomView, mainViewFor, drawnIn, sideOfCode, mentionsSide } from "./bodymap.js";
 import * as TX from "./txclient.js";
 import { personalDataReason, PERSONAL_DATA_ERROR } from "./guard.js";
 
@@ -16,7 +16,7 @@ const I = {
     lang: "Språk", mode: "Läge", clinician: "Klinik", patient: "Patient",
     notices: "Licenser och tredjepartsmaterial", subs: "Delområden", loading: "Laddar…", txError: "Kunde inte nå terminologiservern.",
     clientNote: "Live mot HL7 Nordics terminologiserver, direkt från din webbläsare. Den här sidan lagrar inget SNOMED-innehåll. Ingen modell: förslagen kommer från serverns textfilter.",
-    mapTitle: "…eller peka på kroppen", front: "Fram", back: "Bak", toBody: "← Hela kroppen", location: "Plats",
+    mapTitle: "…eller peka på kroppen", front: "Fram", back: "Bak", toBody: "← Hela kroppen", zoom_leg: "Ben", zoom_headsection: "Huvud och hals, genomskärning", zoom_backzoom: "Rygg, närbild", location: "Plats",
     mapHint: "Klicka på en kroppsdel. Hand, fot och huvud zoomar in. Sidan du klickar på blir patientens sida.",
     findingsHere: "Fynd på vald plats", showMore: "Visa fler", all: "Alla", noFindings: "Inga fynd i listan för den här platsen.",
     fromMap: "ifyllt från kroppskartan", sideL: "vänster", sideR: "höger", legendSel: "vald av dig", legendHl: "plats för valt fynd",
@@ -56,7 +56,7 @@ const I = {
     lang: "Language", mode: "Mode", clinician: "Clinician", patient: "Patient",
     notices: "Licences and third-party material", subs: "Sub-areas", loading: "Loading…", txError: "Could not reach the terminology server.",
     clientNote: "Live against the HL7 Nordics terminology server, straight from your browser. This page stores no SNOMED content. No model: suggestions come from the server text filter.",
-    mapTitle: "…or point at the body", front: "Front", back: "Back", toBody: "← Whole body", location: "Site",
+    mapTitle: "…or point at the body", front: "Front", back: "Back", toBody: "← Whole body", zoom_leg: "Leg", zoom_headsection: "Head and neck, cross-section", zoom_backzoom: "Back, close-up", location: "Site",
     mapHint: "Click a body part. Hand, foot and head zoom in. The side you click becomes the patient's side.",
     findingsHere: "Findings at the chosen site", showMore: "Show more", all: "All", noFindings: "No findings listed for this site.",
     fromMap: "filled from the body map", sideL: "left", sideR: "right", legendSel: "chosen by you", legendHl: "site of the chosen finding",
@@ -404,6 +404,7 @@ function renderInput() {
 // ------------------------------------------------------------------------------------------------ body map
 const regionInfo = (r) => S.snap.bodymap.regions.find((x) => x.id === r);
 const regionLabel = (r) => (regionInfo(r)?.label[S.lang]) || r;
+const viewLabel = (v) => (v === "hand" ? regionLabel(v) : t("zoom_" + v));
 const sideLabel = (side) => (side === "left" ? t("sideL") : side === "right" ? t("sideR") : "");
 
 function currentHl() {
@@ -425,8 +426,8 @@ function focusMapOn(f) {
 function onRegion(region, side) {
   const M = S.map;
   const sameSel = M.sel && M.sel.region === region && (M.sel.side || null) === (side || null);
-  if ((M.view === "front" || M.view === "back") && ZOOMABLE.has(region)) {
-    M.main = M.view; M.view = region; M.side = side; M.sel = { region, side }; M.more = false;
+  if ((M.view === "front" || M.view === "back") && ZOOM_OF[region]) {
+    M.main = M.view; M.view = ZOOM_OF[region]; M.side = side; M.sel = { region, side }; M.more = false;
   } else if (sameSel) { M.sel = null; }
   else { M.sel = { region, side }; M.more = false; }
   renderMap();
@@ -456,7 +457,7 @@ function renderMap() {
   box.replaceChildren(h("h2", {}, t("mapTitle")));
   box.append(zoom
     ? h("div", { class: "row tight" }, h("button", { type: "button", class: "ghost small", id: "bm-back", onclick: () => { M.view = M.main; renderMap(); } }, t("toBody")),
-        h("span", { class: "dim" }, regionLabel(M.view) + (M.side ? ", " + sideLabel(M.side) : "")))
+        h("span", { class: "dim" }, viewLabel(M.view) + (M.side && M.view !== "headsection" && M.view !== "backzoom" ? ", " + sideLabel(M.side) : "")))
     : seg("", [["front", t("front")], ["back", t("back")]], M.view, (v) => { M.view = v; M.main = v; renderMap(); }));
   const host = h("div", { class: "bmhost", id: "bmhost" });
   box.append(host);
