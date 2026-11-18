@@ -665,10 +665,14 @@
       "igår": 1,
       "i går": 1,
       "idag": 0,
-      "i dag": 0
+      "i dag": 0,
+      "förra veckan": 7,
+      "förra månaden": 30
     },
     "en": {
-      "yesterday": 1
+      "yesterday": 1,
+      "last week": 7,
+      "last month": 30
     }
   },
   "patientPhrases": {
@@ -1101,6 +1105,30 @@
         ],
         "sided": false,
         "parent": "throat"
+      },
+      {
+        "id": "arm",
+        "label": {
+          "sv": "Arm",
+          "en": "Arm"
+        },
+        "codes": [
+          "53120007"
+        ],
+        "sided": true,
+        "parent": null
+      },
+      {
+        "id": "leg",
+        "label": {
+          "sv": "Ben",
+          "en": "Leg"
+        },
+        "codes": [
+          "61685007"
+        ],
+        "sided": true,
+        "parent": null
       }
     ],
     "subregions": {
@@ -1157,8 +1185,10 @@
       "shoulder",
       "upperarm",
       "forearm",
+      "arm",
       "thigh",
       "lowerleg",
+      "leg",
       "hip",
       "buttock",
       "neck",
@@ -1335,9 +1365,7 @@
       },
       {
         "regions": [
-          "upperarm",
-          "forearm",
-          "elbow"
+          "arm"
         ],
         "sv": [
           "arm",
@@ -1539,13 +1567,7 @@
       },
       {
         "regions": [
-          "thigh",
-          "knee",
-          "lowerleg",
-          "ankle",
-          "foot",
-          "toes",
-          "hip"
+          "leg"
         ],
         "sv": [
           "ben",

@@ -10,88 +10,7 @@ import { drawBodyMap, ZOOM_OF, isZoomView, mainViewFor, drawnIn, sideOfCode, men
 import * as TX from "./txclient.js";
 import { personalDataReason, PERSONAL_DATA_ERROR } from "./guard.js";
 
-const I = {
-  sv: {
-    title: "Smarta formulär med SNOMED CT",
-    sub: "Skriv vad patienten har. Systemet föreslår ett begrepp, frågar bara det som är giltigt och bekräftar med en mening.",
-    lang: "Språk", mode: "Läge", clinician: "Klinik", patient: "Patient",
-    notices: "Licenser och tredjepartsmaterial", subs: "Delområden", loading: "Laddar…", txError: "Kunde inte nå terminologiservern.",
-    clientNote: "Live mot HL7 Nordics terminologiserver, direkt från din webbläsare. Den här sidan lagrar inget SNOMED-innehåll. Ingen modell: förslagen kommer från serverns textfilter.",
-    mapTitle: "…eller peka på kroppen", front: "Fram", back: "Bak", toBody: "← Hela kroppen", multiFound: "Flera fynd hittades i texten. Varje del har fått sin egen kroppsdel och sina egna värden. Kontrollera dem innan du lägger till.", bodyPart: "Kroppsdel", resolving: "Söker…", noneInPart: "Inget fynd i SNOMED CT för den kroppsdelen matchade orden.", review: "Granska", addOne: "Lägg i listan", addAll: "Lägg alla i listan", siteOk: "platsen hör till kroppsdelen", otherPart: "annan kroppsdel", partMiss: "Inget förslag hör till kroppsdelen du nämnde. Kontrollera förslagen.", chart: "Fynd i listan", addToList: "Lägg till i listan", updateEntry: "Uppdatera i listan", removeEntry: "Ta bort", editEntry: "Ändra", clearList: "Töm listan", scopeOne: "Detta fynd", scopeAll: "Hela listan", legendChart: "finns i listan", chartHint: "Fler fynd? Lägg till det här i listan och välj nästa på kroppen eller i texten.", addedMsg: "Tillagt i listan.", editingNote: "Du ändrar ett fynd i listan.", zoom_leg: "Ben", zoom_headsection: "Huvud och hals, genomskärning", zoom_backzoom: "Rygg, närbild", location: "Plats",
-    mapHint: "Klicka på en kroppsdel. Hand, fot och huvud zoomar in. Sidan du klickar på blir patientens sida.",
-    findingsHere: "Fynd på vald plats", showMore: "Visa fler", all: "Alla", noFindings: "Inga fynd i listan för den här platsen.",
-    fromMap: "ifyllt från kroppskartan", sideL: "vänster", sideR: "höger", legendSel: "vald av dig", legendHl: "plats för valt fynd",
-    s1: "1. Berätta", s2: "2. Förslag", s3: "3. Förfina", s4: "4. Stämmer det här?", s5: "5. Utdata",
-    ph: "Till exempel: smärta i vänster tumme sedan två dagar, bultande",
-    go: "Tolka", reset: "Börja om", tryThese: "Prova",
-    localNote: "Texten tolkas i din webbläsare. Bara kodslagningar går till terminologiservern.",
-    localNoteClient: "Sökorden (inte hela texten) skickas till terminologiservern, en tredje part. Skriv inga personuppgifter: demon är bara för påhittade exempel.",
-    personal: "Texten ser ut att innehålla en personuppgift (personnummer eller e-postadress). Den skickas inte någonstans. Demon är bara för påhittade exempel.",
-    staticNote: "Demoläge: data är en förberäknad kopia av SNOMED CT från servern. Omrankning med modell finns bara för exempelfraserna.",
-    liveNote: "Live: omrankning med en lokal modell och kontroll av koder mot terminologiservern.",
-    nothing: "Skriv något och tryck Tolka.", noMatch: "Ingen säker träff. Välj själv i listan eller sök nedan.",
-    lowConf: "Låg säkerhet. Kontrollera förslaget.", pick: "Välj", picked: "Valt",
-    baseline: "Baslinje (textfilter)", rerank: "Omrankning (modell)",
-    site: "Plats", sided: "kan ha sida", notSided: "ingen sida",
-    prefilled: "ifyllt från din text", more: "fler…", fewer: "färre", why: "Varför de här alternativen?",
-    whyText: "Alternativen kommer från terminologiservern med den här ECL-frågan:",
-    quickText: "Snabbvalen är en kort lista inom samma mängd.",
-    latWhy: "Sida visas bara för kroppsdelar i SNOMED CT:s referensmängd 'lateralizable body structure'.",
-    num: "Antal", unit: "Enhet", clear: "Rensa",
-    yes: "Ja, det stämmer", edit: "Ändra", confirmed: "Bekräftat i demon. Ingenting sparas.",
-    fallback: "Visas på engelska eftersom svenska SNOMED CT saknar term:",
-    pickFinding: "Välj ett begrepp ovan för att få fråga.",
-    tabs: { expr: "SNOMED-uttryck", oe: "openEHR", fhir: "FHIR", codes: "Koder" },
-    copy: "Kopiera", copied: "Kopierat", unmapped: "Ej mappat i openEHR-mallen",
-    exprNote: "Efterkoordinerat uttryck. Själva uttrycket har inte validerats mot en server.",
-    code: "Kod", role: "Roll", term: "Term", status: "Status",
-    okBuild: "finns i serverns utvidgning vid bygget", okLive: "validerad mot servern nu", checking: "kontrollerar…", bad: "ogiltig",
-    search: "Sök i begreppen (t.ex. fot, hals, mage)", results: "Träffar",
-    foot: "Demo, inte beslutsstöd. Inga riktiga patientdata. SNOMED CT-innehåll via HL7 Nordics terminologiserver, svenska termer från Sveriges SNOMED CT-modul.",
-    role_: { finding: "fynd", "finding site": "fyndplats" },
-    sample: "Exempel", unreviewed: "Svenska formuleringar utöver SNOMED-termerna är våra och inte granskade.",
-  },
-  en: {
-    title: "Smart forms with SNOMED CT",
-    sub: "Type what the patient has. The system proposes a concept, asks only what is valid and confirms with a sentence.",
-    lang: "Language", mode: "Mode", clinician: "Clinician", patient: "Patient",
-    notices: "Licences and third-party material", subs: "Sub-areas", loading: "Loading…", txError: "Could not reach the terminology server.",
-    clientNote: "Live against the HL7 Nordics terminology server, straight from your browser. This page stores no SNOMED content. No model: suggestions come from the server text filter.",
-    mapTitle: "…or point at the body", front: "Front", back: "Back", toBody: "← Whole body", multiFound: "Several findings were found in the text. Each part has its own body part and its own values. Check them before adding.", bodyPart: "Body part", resolving: "Searching…", noneInPart: "No finding in SNOMED CT for that body part matched the words.", review: "Review", addOne: "Add to the list", addAll: "Add all to the list", siteOk: "the site belongs to the body part", otherPart: "other body part", partMiss: "No suggestion belongs to the body part you mentioned. Check the suggestions.", chart: "Findings in the list", addToList: "Add to the list", updateEntry: "Update the entry", removeEntry: "Remove", editEntry: "Edit", clearList: "Clear the list", scopeOne: "This finding", scopeAll: "The whole list", legendChart: "in the list", chartHint: "More findings? Add this one to the list and pick the next on the body or in the text.", addedMsg: "Added to the list.", editingNote: "You are editing a finding in the list.", zoom_leg: "Leg", zoom_headsection: "Head and neck, cross-section", zoom_backzoom: "Back, close-up", location: "Site",
-    mapHint: "Click a body part. Hand, foot and head zoom in. The side you click becomes the patient's side.",
-    findingsHere: "Findings at the chosen site", showMore: "Show more", all: "All", noFindings: "No findings listed for this site.",
-    fromMap: "filled from the body map", sideL: "left", sideR: "right", legendSel: "chosen by you", legendHl: "site of the chosen finding",
-    s1: "1. Tell", s2: "2. Suggestions", s3: "3. Refine", s4: "4. Is this what you meant?", s5: "5. Output",
-    ph: "For example: pain in the left thumb for two days, throbbing",
-    go: "Interpret", reset: "Start over", tryThese: "Try",
-    localNote: "The text is interpreted in your browser. Only code lookups go to the terminology server.",
-    localNoteClient: "The search words (not the whole text) are sent to the terminology server, a third party. Do not type personal data: the demo is for made-up examples only.",
-    personal: "The text looks like it contains personal data (an identity number or an e-mail address). It is not sent anywhere. The demo is for made-up examples only.",
-    staticNote: "Demo mode: data is a precomputed copy of SNOMED CT from the server. Model re-ranking exists only for the sample phrases.",
-    liveNote: "Live: re-ranking with a local model and code checks against the terminology server.",
-    nothing: "Type something and press Interpret.", noMatch: "No confident match. Pick from the list or search below.",
-    lowConf: "Low confidence. Please check the suggestion.", pick: "Pick", picked: "Picked",
-    baseline: "Baseline (text filter)", rerank: "Re-ranked (model)",
-    site: "Site", sided: "can have a side", notSided: "no side",
-    prefilled: "filled from your text", more: "more…", fewer: "fewer", why: "Why these options?",
-    whyText: "The options come from the terminology server with this ECL query:",
-    quickText: "The quick choices are a short list within the same set.",
-    latWhy: "Side is shown only for body structures in the SNOMED CT reference set 'lateralizable body structure'.",
-    num: "Number", unit: "Unit", clear: "Clear",
-    yes: "Yes, that is right", edit: "Edit", confirmed: "Confirmed in the demo. Nothing is saved.",
-    fallback: "Shown in English because Swedish SNOMED CT has no term:",
-    pickFinding: "Pick a concept above to get the questions.",
-    tabs: { expr: "SNOMED expression", oe: "openEHR", fhir: "FHIR", codes: "Codes" },
-    copy: "Copy", copied: "Copied", unmapped: "Not mapped in the openEHR template",
-    exprNote: "Post-coordinated expression. The expression itself has not been validated by a server.",
-    code: "Code", role: "Role", term: "Term", status: "Status",
-    okBuild: "in the server's expansion at build time", okLive: "validated against the server now", checking: "checking…", bad: "invalid",
-    search: "Search the concepts (e.g. foot, throat, stomach)", results: "Results",
-    foot: "Demo, not decision support. No real patient data. SNOMED CT content via the HL7 Nordics terminology server, Swedish terms from the Swedish SNOMED CT module.",
-    role_: { finding: "finding", "finding site": "finding site" },
-    sample: "Example", unreviewed: "Swedish wording beyond the SNOMED terms is ours and unreviewed.",
-  },
-};
+import { I } from "./i18n.js";
 
 const S = {
   snap: null, source: "snapshot", known: new Map(), universe: [], optionsLoaded: new Set(), live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
@@ -290,11 +209,15 @@ async function searchInRegions(regions, p) {
   const q = normalizeSymptoms(p.query);
   const findingWords = contentWords(p.bodyWord ? removeWord(q, p.bodyWord) : q);
   const partWords = [...regions.flatMap((r) => [regionOf(r)?.label.sv, regionOf(r)?.label.en]), ...(p.base || [])].filter(Boolean);
+  const side = sideOfCode(p.values && p.values.laterality);
+  const otherSide = side === "left" ? "right" : side === "right" ? "left" : null;
   const calls = [];
   if (S.source === "client") {
     for (const tp of S.snap.cfg.topics) for (const lang of ["en", "sv"]) {
-      const word = p.base && p.base.length ? p.base[lang === "sv" ? 0 : 1] : p.bodyWord;
-      calls.push(TX.expand(`(${tp.ecl}) : ${attr} = (${sites})`, { filter: word, lang, count: 60, designations: true }).then((r) => ({ tp, lang, r })).catch(() => null));
+      // the word as typed and its base form ("handen" is not the start of any term, "hand" is); a compound is searched as it is
+      const bases = p.base && p.base.length ? [p.base[lang === "sv" ? 0 : 1]] : [];
+      const words = [...new Set([...(p.lang === lang || !p.lang ? [p.bodyWord] : []), ...bases].filter(Boolean))];
+      for (const word of words) calls.push(TX.expand(`(${tp.ecl}) : ${attr} = (${sites})`, { filter: word, lang, count: 60, designations: true }).then((r) => ({ tp, lang, r })).catch(() => null));
     }
   }
   const got = (await Promise.all(calls)).filter(Boolean);
@@ -313,6 +236,7 @@ async function searchInRegions(regions, p) {
   for (const e of by.values()) {
     if (e.sv === e.en) e.sv = null;
     if (S.lang === "en" && !e.en) continue;
+    if (otherSide && mentionsSide([e.en, e.sv], otherSide)) continue; // "right arm" never gets "pain in left arm"
     S.known.set(e.code, [e.code, e.en, e.sv, e.topic]);
     const names = [e.en, e.sv, ...e.names].filter(Boolean);
     const sc = Math.max(...names.map((n) => lexScore(q, n)), ...partWords.flatMap((w) => names.map((n) => lexScore(`${findingWords} ${w}`, n))));
@@ -326,10 +250,10 @@ async function searchInRegions(regions, p) {
 async function applyRegionGuard() {
   S.cand.part = null;
   const alias = aliasOf(S.ex.rest, S.snap.cfg);
-  const bw = alias ? { word: alias.bodyWord, regions: alias.regions, base: [] } : findBodyWord(S.ex.rest, bodyTable(S.snap.cfg));
+  const bw = alias ? { word: alias.bodyWord, regions: alias.regions, base: [], lang: undefined } : findBodyWord(S.ex.rest, bodyTable(S.snap.cfg));
   if (!bw) return;
   // suggestions found inside the body part itself (the text filter alone may miss them, e.g. "handen" is not a word start of "hand")
-  const own = (await searchInRegions(bw.regions, { query: alias ? alias.query : S.ex.rest, bodyWord: alias ? alias.bodyWord : bw.word, base: bw.base })).filter((r) => r.sc >= 0.45).slice(0, 5);
+  const own = (await searchInRegions(bw.regions, { query: alias ? alias.query : S.ex.rest, bodyWord: alias ? alias.bodyWord : bw.word, base: bw.base, lang: bw.lang, values: S.ex.values })).filter((r) => r.sc >= 0.45).slice(0, 5);
   const items = [...own.map((r) => ({ code: r.code, en: r.en, sv: r.sv, topic: r.topic, score: +r.sc.toFixed(4), confidence: +Math.min(1, r.sc).toFixed(3), scores: { filter: true, lex: +r.sc.toFixed(3), emb: null }, inRegion: true })),
     ...S.cand.items.filter((i) => !own.some((o) => o.code === i.code))];
   const rest = items.filter((i) => i.inRegion === undefined);
@@ -356,8 +280,9 @@ async function resolveProposal(p) {
     if (!code) return out;
     const f = await loadFinding(code);
     if (!f) return out;
-    const regs = f.site ? S.snap.bodymap.siteRegions[f.site.code] || [] : [];
-    if (p.regions && !regs.some((r) => p.regions.includes(r))) return out; // the site is not inside the body part that was said
+    // the finding must have a finding site inside the body part that was said (asked of the server, not guessed from the first site shown:
+    // "Pain in left arm" has the site "left half of body" first and the arm second)
+    if (p.regions && !(await inRegionCodes([code], p.regions)).has(code)) return out;
     const vis = new Set(visibleSlots(f));
     const values = {};
     for (const [slot, c] of Object.entries(p.values)) if (vis.has(slot)) values[slot] = c;
