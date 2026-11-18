@@ -1,0 +1,379 @@
+// PEN&PAD smart forms demo: free text -> SNOMED CT finding -> only the valid follow-up questions -> confirmation
+// sentence + SNOMED expression + openEHR + FHIR. Runs on a static snapshot; if a backend answers /api/health it
+// also uses the embedding model for candidates and validates codes live against the terminology server.
+
+import { extract, buildPhrases } from "./extract.js";
+import { sentence, expression, openEhr, fhirCondition, codesUsed, term } from "./generators.js";
+import { rankLexical } from "./lexrank.js";
+
+const I = {
+  sv: {
+    title: "Smarta formulär med SNOMED CT",
+    sub: "Skriv vad patienten har. Systemet föreslår ett begrepp, frågar bara det som är giltigt och bekräftar med en mening.",
+    lang: "Språk", mode: "Läge", clinician: "Klinik", patient: "Patient",
+    s1: "1. Berätta", s2: "2. Förslag", s3: "3. Förfina", s4: "4. Stämmer det här?", s5: "5. Utdata",
+    ph: "Till exempel: smärta i vänster tumme sedan två dagar, bultande",
+    go: "Tolka", reset: "Börja om", tryThese: "Prova",
+    localNote: "Texten tolkas i din webbläsare. Bara kodslagningar går till terminologiservern.",
+    staticNote: "Demoläge: data är en förberäknad kopia av SNOMED CT från servern. Omrankning med modell finns bara för exempelfraserna.",
+    liveNote: "Live: omrankning med en lokal modell och kontroll av koder mot terminologiservern.",
+    nothing: "Skriv något och tryck Tolka.", noMatch: "Ingen säker träff. Välj själv i listan eller sök nedan.",
+    lowConf: "Låg säkerhet. Kontrollera förslaget.", pick: "Välj", picked: "Valt",
+    baseline: "Baslinje (textfilter)", rerank: "Omrankning (modell)",
+    site: "Plats", sided: "kan ha sida", notSided: "ingen sida",
+    prefilled: "ifyllt från din text", more: "fler…", fewer: "färre", why: "Varför de här alternativen?",
+    whyText: "Alternativen kommer från terminologiservern med den här ECL-frågan:",
+    quickText: "Snabbvalen är en kort lista inom samma mängd.",
+    latWhy: "Sida visas bara för kroppsdelar i SNOMED CT:s referensmängd 'lateralizable body structure'.",
+    num: "Antal", unit: "Enhet", clear: "Rensa",
+    yes: "Ja, det stämmer", edit: "Ändra", confirmed: "Bekräftat i demon. Ingenting sparas.",
+    fallback: "Visas på engelska eftersom svenska SNOMED CT saknar term:",
+    pickFinding: "Välj ett begrepp ovan för att få fråga.",
+    tabs: { expr: "SNOMED-uttryck", oe: "openEHR", fhir: "FHIR", codes: "Koder" },
+    copy: "Kopiera", copied: "Kopierat", unmapped: "Ej mappat i openEHR-mallen",
+    exprNote: "Efterkoordinerat uttryck. Själva uttrycket har inte validerats mot en server.",
+    code: "Kod", role: "Roll", term: "Term", status: "Status",
+    okBuild: "finns i serverns utvidgning vid bygget", okLive: "validerad mot servern nu", checking: "kontrollerar…", bad: "ogiltig",
+    search: "Sök i begreppen (t.ex. fot, hals, mage)", results: "Träffar",
+    foot: "Demo, inte beslutsstöd. Inga riktiga patientdata. SNOMED CT-innehåll via HL7 Nordics terminologiserver, svenska termer från Sveriges SNOMED CT-modul.",
+    role_: { finding: "fynd", "finding site": "fyndplats" },
+    sample: "Exempel", unreviewed: "Svenska formuleringar utöver SNOMED-termerna är våra och inte granskade.",
+  },
+  en: {
+    title: "Smart forms with SNOMED CT",
+    sub: "Type what the patient has. The system proposes a concept, asks only what is valid and confirms with a sentence.",
+    lang: "Language", mode: "Mode", clinician: "Clinician", patient: "Patient",
+    s1: "1. Tell", s2: "2. Suggestions", s3: "3. Refine", s4: "4. Is this what you meant?", s5: "5. Output",
+    ph: "For example: pain in the left thumb for two days, throbbing",
+    go: "Interpret", reset: "Start over", tryThese: "Try",
+    localNote: "The text is interpreted in your browser. Only code lookups go to the terminology server.",
+    staticNote: "Demo mode: data is a precomputed copy of SNOMED CT from the server. Model re-ranking exists only for the sample phrases.",
+    liveNote: "Live: re-ranking with a local model and code checks against the terminology server.",
+    nothing: "Type something and press Interpret.", noMatch: "No confident match. Pick from the list or search below.",
+    lowConf: "Low confidence. Please check the suggestion.", pick: "Pick", picked: "Picked",
+    baseline: "Baseline (text filter)", rerank: "Re-ranked (model)",
+    site: "Site", sided: "can have a side", notSided: "no side",
+    prefilled: "filled from your text", more: "more…", fewer: "fewer", why: "Why these options?",
+    whyText: "The options come from the terminology server with this ECL query:",
+    quickText: "The quick choices are a short list within the same set.",
+    latWhy: "Side is shown only for body structures in the SNOMED CT reference set 'lateralizable body structure'.",
+    num: "Number", unit: "Unit", clear: "Clear",
+    yes: "Yes, that is right", edit: "Edit", confirmed: "Confirmed in the demo. Nothing is saved.",
+    fallback: "Shown in English because Swedish SNOMED CT has no term:",
+    pickFinding: "Pick a concept above to get the questions.",
+    tabs: { expr: "SNOMED expression", oe: "openEHR", fhir: "FHIR", codes: "Codes" },
+    copy: "Copy", copied: "Copied", unmapped: "Not mapped in the openEHR template",
+    exprNote: "Post-coordinated expression. The expression itself has not been validated by a server.",
+    code: "Code", role: "Role", term: "Term", status: "Status",
+    okBuild: "in the server's expansion at build time", okLive: "validated against the server now", checking: "checking…", bad: "invalid",
+    search: "Search the concepts (e.g. foot, throat, stomach)", results: "Results",
+    foot: "Demo, not decision support. No real patient data. SNOMED CT content via the HL7 Nordics terminology server, Swedish terms from the Swedish SNOMED CT module.",
+    role_: { finding: "finding", "finding site": "finding site" },
+    sample: "Example", unreviewed: "Swedish wording beyond the SNOMED terms is ours and unreviewed.",
+  },
+};
+
+const S = {
+  snap: null, live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
+  finding: null, values: {}, prefilled: new Set(), duration: null, expanded: new Set(), confirmed: false,
+  tab: "expr", validation: {}, manual: "", sampleHit: null,
+};
+window.__penpad = S; // handle for tests and curious people
+
+const $ = (s, r = document) => r.querySelector(s);
+const t = (k) => I[S.lang][k];
+
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "html") el.innerHTML = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return el;
+}
+
+const ctx = () => ({ cfg: S.snap.cfg, labels: S.snap.labels });
+const gstate = () => ({ lang: S.lang, mode: S.mode, finding: S.finding, values: S.values, duration: S.duration });
+const lab = (code) => term(code, S.lang, S.snap.labels);
+const plainSite = (site) => (S.lang === "sv" ? site.sv || site.en : site.en).replace(/,\s*struktur$/i, "").replace(/\s+structure$/i, "");
+const browserLink = (code) => `https://browser.ihtsdotools.org/?perspective=full&conceptId1=${code}&edition=MAIN`;
+
+// ------------------------------------------------------------------------------------------------ data flow
+async function init() {
+  const snap = await (await fetch("data/snapshot.json")).json();
+  S.snap = snap;
+  S.phrases = buildPhrases(snap.cfg, snap.labels);
+  S.universe = snap.universe;
+  S.uniMap = new Map(snap.universe.map((u) => [u[0], u]));
+  try {
+    const c = new AbortController();
+    setTimeout(() => c.abort(), 1500);
+    const r = await fetch("api/health", { signal: c.signal });
+    const j = r.ok ? await r.json() : null;
+    S.live = !!(j && j.ok);
+    S.liveModel = j && j.model;
+  } catch (_) { S.live = false; }
+  render();
+  const first = S.snap.samples[0];
+  if (first) { S.text = first.text; interpret(); }
+}
+
+async function candidatesFor(rest, rawText) {
+  const sample = S.snap.samples.find((s) => s.text.trim().toLowerCase() === rawText.trim().toLowerCase());
+  S.sampleHit = sample || null;
+  if (S.live) {
+    try {
+      const r = await fetch("api/candidates?" + new URLSearchParams({ q: rest || rawText, mode: S.candMode, k: "5" }));
+      if (r.ok) return await r.json();
+    } catch (_) { /* fall through */ }
+  }
+  if (sample && sample.candidates[S.candMode]) return sample.candidates[S.candMode];
+  if (sample) return sample.candidates.text;
+  return rankLexical(rest || rawText, S.universe);
+}
+
+async function interpret() {
+  S.confirmed = false;
+  S.ex = extract(S.text, S.snap.cfg, S.snap.labels, S.phrases);
+  S.cand = await candidatesFor(S.ex.rest, S.text);
+  S.finding = null; S.values = {}; S.prefilled = new Set(); S.duration = S.ex.duration; S.expanded = new Set();
+  if (S.cand.items.length && !S.cand.low_confidence) selectFinding(S.cand.items[0].code, true);
+  else render();
+}
+
+function visibleSlots(f) {
+  if (!f) return [];
+  const topic = S.snap.cfg.topics.find((x) => x.id === f.topic) || S.snap.cfg.topics[0];
+  return topic.slots.filter((s) => s !== "laterality" || (f.site && f.site.lateralizable));
+}
+
+function selectFinding(code, fromText) {
+  const u = S.uniMap.get(code);
+  if (!u) return;
+  S.finding = { code, en: u[1], sv: u[2], topic: u[3], site: S.snap.details[code] || null };
+  const vis = new Set(visibleSlots(S.finding));
+  S.values = {}; S.prefilled = new Set();
+  if (fromText && S.ex) {
+    for (const [slot, c] of Object.entries(S.ex.values)) if (vis.has(slot)) { S.values[slot] = c; S.prefilled.add(slot); }
+    if (S.ex.duration) S.prefilled.add("duration");
+  }
+  S.confirmed = false;
+  render();
+  if (S.live) validateAll();
+}
+
+async function validateAll() {
+  for (const { code } of codesUsed(gstate(), ctx())) {
+    if (S.validation[code]) continue;
+    S.validation[code] = { state: "checking" };
+    fetch("api/validate?code=" + code).then((r) => r.json()).then((j) => { S.validation[code] = { state: j.ok ? "ok" : "bad" }; renderOutputs(); })
+      .catch(() => { S.validation[code] = { state: "build" }; renderOutputs(); });
+  }
+  renderOutputs();
+}
+
+// ------------------------------------------------------------------------------------------------ rendering
+function render() {
+  document.documentElement.lang = S.lang;
+  renderHeader(); renderInput(); renderCandidates(); renderForm(); renderConfirm(); renderOutputs(); renderFoot();
+}
+
+function seg(label, options, current, on) {
+  return h("div", { class: "seg", role: "group", "aria-label": label },
+    h("span", { class: "seglabel" }, label),
+    options.map(([v, text]) => h("button", { type: "button", class: "segbtn" + (v === current ? " on" : ""), "aria-pressed": v === current ? "true" : "false", onclick: () => on(v) }, text)));
+}
+
+function renderHeader() {
+  const el = $("#hdr");
+  el.replaceChildren(
+    h("div", { class: "hrow" },
+      h("div", {}, h("p", { class: "eyebrow" }, "PEN&PAD · Nordic Hackathon 2026"), h("h1", {}, t("title")), h("p", { class: "lede" }, t("sub"))),
+      h("div", { class: "ctl" },
+        seg(t("lang"), [["sv", "SV"], ["en", "EN"]], S.lang, (v) => { S.lang = v; render(); }),
+        seg(t("mode"), [["clinician", t("clinician")], ["patient", t("patient")]], S.mode, (v) => { S.mode = v; render(); }))),
+    h("p", { class: "badge " + (S.live ? "live" : "static") }, S.live ? `${t("liveNote")} (${S.liveModel || "model"})` : t("staticNote")));
+}
+
+function renderInput() {
+  const box = $("#input");
+  if (!box.dataset.ready) {
+    box.dataset.ready = "1";
+    box.append(
+      h("h2", { id: "h-in" }, ""),
+      h("label", { for: "text", class: "sr" }, "text"),
+      h("textarea", { id: "text", rows: "2", spellcheck: "false" }),
+      h("div", { class: "row" }, h("button", { id: "go", type: "button", class: "primary" }, ""), h("button", { id: "rs", type: "button", class: "ghost" }, "")),
+      h("p", { id: "notes", class: "hint" }), h("div", { id: "samples", class: "chips" }));
+    $("#text").addEventListener("input", (e) => { S.text = e.target.value; });
+    $("#text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); interpret(); } });
+    $("#go").addEventListener("click", () => interpret());
+    $("#rs").addEventListener("click", () => { S.text = ""; $("#text").value = ""; S.cand = null; S.finding = null; S.values = {}; S.duration = null; S.ex = null; render(); });
+  }
+  $("#h-in").textContent = t("s1");
+  $("#text").placeholder = t("ph");
+  if ($("#text").value !== S.text) $("#text").value = S.text;
+  $("#go").textContent = t("go"); $("#rs").textContent = t("reset");
+  $("#notes").textContent = t("localNote");
+  $("#samples").replaceChildren(h("span", { class: "seglabel" }, t("tryThese")),
+    ...S.snap.samples.map((s) => h("button", { type: "button", class: "chip", onclick: () => { S.text = s.text; $("#text").value = s.text; interpret(); } }, s.text.length > 46 ? s.text.slice(0, 44) + "…" : s.text)));
+}
+
+function bar(v) { return h("span", { class: "bar", "aria-hidden": "true" }, h("i", { style: `width:${Math.round(Math.min(1, v) * 100)}%` })); }
+
+function renderCandidates() {
+  const box = $("#cands");
+  box.replaceChildren(h("h2", {}, t("s2")));
+  if (!S.cand) { box.append(h("p", { class: "hint" }, t("nothing"))); return; }
+  const both = S.live || (S.sampleHit && S.sampleHit.candidates.rerank);
+  if (both) {
+    box.append(seg("", [["text", t("baseline")], ["rerank", t("rerank")]], S.candMode, async (m) => { S.candMode = m; S.cand = await candidatesFor(S.ex.rest, S.text); render(); }));
+  }
+  if (!S.cand.items.length) box.append(h("p", { class: "warn" }, t("noMatch")));
+  else if (S.cand.low_confidence) box.append(h("p", { class: "warn" }, "⚠ " + t("lowConf")));
+  const list = h("ul", { class: "cands" });
+  for (const it of S.cand.items.slice(0, 5)) {
+    const sel = S.finding && S.finding.code === it.code;
+    const det = S.snap.details[it.code];
+    list.append(h("li", { class: "cand" + (sel ? " sel" : "") },
+      h("div", { class: "cmain" },
+        h("div", { class: "cname" }, h("strong", {}, S.lang === "sv" ? it.sv || it.en : it.en), it.sv && S.lang === "sv" ? h("span", { class: "alt" }, it.en) : (S.lang === "en" && it.sv ? h("span", { class: "alt" }, it.sv) : null)),
+        h("div", { class: "cmeta" },
+          h("a", { href: browserLink(it.code), target: "_blank", rel: "noopener", class: "mono" }, it.code),
+          det ? h("span", {}, `${t("site")}: ${plainSite(det)} (${det.lateralizable ? t("sided") : t("notSided")})`) : null,
+          h("span", { class: "mono dim" }, `lex ${it.scores.lex}` + (it.scores.emb != null ? ` · emb ${it.scores.emb}` : "")))),
+      bar(it.confidence ?? it.score),
+      h("button", { type: "button", class: sel ? "ghost" : "primary small", onclick: () => selectFinding(it.code, true) }, sel ? t("picked") : t("pick"))));
+  }
+  box.append(list);
+  if (S.cand.low_confidence || !S.cand.items.length) box.append(manualSearch());
+}
+
+function manualSearch() {
+  const wrap = h("div", { class: "manual" });
+  const input = h("input", { type: "search", id: "manual", placeholder: t("search"), value: S.manual, "aria-label": t("search") });
+  const out = h("ul", { class: "cands small" });
+  const run = () => {
+    S.manual = input.value;
+    const r = rankLexical(S.manual, S.universe, 8, 0);
+    out.replaceChildren(...r.items.map((it) => h("li", { class: "cand" }, h("div", { class: "cmain" }, h("strong", {}, S.lang === "sv" ? it.sv || it.en : it.en), h("span", { class: "mono dim" }, it.code)),
+      h("button", { type: "button", class: "primary small", onclick: () => selectFinding(it.code, true) }, t("pick")))));
+  };
+  input.addEventListener("input", run);
+  wrap.append(input, out);
+  queueMicrotask(run);
+  return wrap;
+}
+
+function slotBlock(slot) {
+  const cfg = S.snap.cfg.slots[slot];
+  const blk = h("div", { class: "slot", "data-slot": slot });
+  const filled = S.prefilled.has(slot);
+  blk.append(h("div", { class: "slothead" }, h("span", { class: "slotname" }, cfg.label[S.lang]), filled ? h("span", { class: "tag" }, "✎ " + t("prefilled")) : null));
+  if (cfg.kind === "duration") {
+    const n = h("input", { type: "number", min: "1", max: "999", id: "dur-n", "aria-label": t("num"), value: S.duration ? S.duration.n : "" });
+    const u = h("select", { id: "dur-u", "aria-label": t("unit") }, S.snap.cfg.units.map((x) => h("option", { value: x.key, selected: S.duration && S.duration.unit === x.key }, S.lang === "sv" ? x.svLabel[1] : x.en[1] || x.en[0])));
+    const upd = () => { const v = parseInt(n.value, 10); S.duration = v > 0 ? { n: v, unit: u.value } : null; S.prefilled.delete("duration"); S.confirmed = false; renderConfirm(); renderOutputs(); };
+    n.addEventListener("input", upd); u.addEventListener("change", () => { if (n.value) upd(); });
+    blk.append(h("div", { class: "row" }, n, u, h("button", { type: "button", class: "ghost small", onclick: () => { S.duration = null; S.confirmed = false; renderForm(); renderConfirm(); renderOutputs(); } }, t("clear"))));
+    return blk;
+  }
+  const opts = S.snap.options[slot];
+  const quick = opts.filter((o) => o.quick);
+  const extra = opts.filter((o) => !o.quick);
+  const open = S.expanded.has(slot);
+  const shown = open ? opts : quick;
+  const row = h("div", { class: "btns" });
+  for (const o of shown) {
+    const on = S.values[slot] === o.code;
+    row.append(h("button", { type: "button", class: "opt" + (on ? " on" : ""), "aria-pressed": on ? "true" : "false", onclick: () => {
+      if (on) delete S.values[slot]; else S.values[slot] = o.code;
+      S.prefilled.delete(slot); S.confirmed = false; renderForm(); renderConfirm(); renderOutputs(); if (S.live) validateAll();
+    } }, lab(o.code)));
+  }
+  if (extra.length) row.append(h("button", { type: "button", class: "opt more", "aria-expanded": open ? "true" : "false", onclick: () => { if (open) S.expanded.delete(slot); else S.expanded.add(slot); renderForm(); } }, open ? t("fewer") : `${t("more")} (+${extra.length})`));
+  blk.append(row);
+  const ecl = h("details", { class: "why" }, h("summary", {}, t("why")),
+    h("p", {}, t("whyText")), h("code", { class: "ecl" }, cfg.ecl), h("p", { class: "hint" }, t("quickText")), slot === "laterality" ? h("p", { class: "hint" }, t("latWhy")) : null);
+  blk.append(ecl);
+  return blk;
+}
+
+function renderForm() {
+  const box = $("#form");
+  box.replaceChildren(h("h2", {}, t("s3")));
+  if (!S.finding) { box.append(h("p", { class: "hint" }, t("pickFinding"))); return; }
+  const f = S.finding;
+  box.append(h("div", { class: "found" },
+    h("strong", {}, S.lang === "sv" ? f.sv || f.en : f.en), h("a", { href: browserLink(f.code), target: "_blank", rel: "noopener", class: "mono" }, f.code),
+    f.site ? h("span", { class: "dim" }, `${t("site")}: ${plainSite(f.site)}`) : null));
+  const grid = h("div", { class: "slots" });
+  for (const s of visibleSlots(f)) grid.append(slotBlock(s));
+  box.append(grid);
+}
+
+function renderConfirm() {
+  const box = $("#confirm");
+  box.replaceChildren(h("h2", {}, t("s4")));
+  if (!S.finding) { box.append(h("p", { class: "hint" }, t("pickFinding"))); return; }
+  const r = sentence(gstate(), ctx());
+  box.append(h("blockquote", { class: "sentence", id: "sentence" }, r.text));
+  if (r.fallbacks.length) box.append(h("p", { class: "hint" }, t("fallback") + " " + r.fallbacks.map((c) => `${S.snap.labels[c]?.en || c}`).join(", ")));
+  if (S.lang === "sv") box.append(h("p", { class: "hint" }, t("unreviewed")));
+  box.append(h("div", { class: "row" },
+    h("button", { type: "button", class: "primary", id: "yes", onclick: () => { S.confirmed = true; renderConfirm(); } }, t("yes")),
+    h("button", { type: "button", class: "ghost", onclick: () => $("#form").scrollIntoView({ behavior: "smooth" }) }, t("edit"))));
+  if (S.confirmed) box.append(h("p", { class: "ok", id: "okmsg" }, "✓ " + t("confirmed")));
+}
+
+function pre(text, extraNote) {
+  const p = h("pre", { class: "out" }, text);
+  const btn = h("button", { type: "button", class: "ghost small", onclick: async (e) => {
+    try { await navigator.clipboard.writeText(text); e.target.textContent = t("copied"); }
+    catch (_) { const r = document.createRange(); r.selectNodeContents(p); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+    setTimeout(() => { e.target.textContent = t("copy"); }, 1400);
+  } }, t("copy"));
+  return h("div", { class: "outwrap" }, h("div", { class: "outbar" }, extraNote ? h("span", { class: "hint" }, extraNote) : h("span"), btn), p);
+}
+
+function statusCell(code) {
+  const v = S.validation[code];
+  if (S.live && v) {
+    if (v.state === "checking") return h("span", { class: "dim" }, t("checking"));
+    if (v.state === "ok") return h("span", { class: "okc" }, "✓ " + t("okLive"));
+    if (v.state === "bad") return h("span", { class: "badc" }, "✗ " + t("bad"));
+  }
+  return h("span", { class: "okc" }, "✓ " + t("okBuild"));
+}
+
+function renderOutputs() {
+  const box = $("#outputs");
+  box.replaceChildren(h("h2", {}, t("s5")));
+  if (!S.finding) { box.append(h("p", { class: "hint" }, t("pickFinding"))); return; }
+  const tabs = h("div", { class: "tabs", role: "tablist" }, Object.entries(t("tabs")).map(([k, v]) => h("button", { type: "button", role: "tab", class: "tab" + (S.tab === k ? " on" : ""), "aria-selected": S.tab === k ? "true" : "false", onclick: () => { S.tab = k; renderOutputs(); } }, v)));
+  box.append(tabs);
+  const c = ctx();
+  const time = "2026-11-18T12:00:00Z";
+  if (S.tab === "expr") box.append(pre(expression(gstate(), c), t("exprNote")));
+  else if (S.tab === "oe") {
+    const r = openEhr(gstate(), c, { time });
+    box.append(pre(JSON.stringify(r.composition, null, 2)));
+    if (r.unmapped.length) box.append(h("div", { class: "callout" }, h("strong", {}, t("unmapped")), h("ul", {}, r.unmapped.map((u) => h("li", {}, `${u.key}: ${u.reason}`)))));
+  } else if (S.tab === "fhir") box.append(pre(JSON.stringify(fhirCondition(gstate(), c, { time }), null, 2)));
+  else {
+    const rows = codesUsed(gstate(), c);
+    box.append(h("div", { class: "tablewrap" }, h("table", {}, h("thead", {}, h("tr", {}, [t("role"), t("code"), t("term"), t("status")].map((x) => h("th", {}, x)))),
+      h("tbody", {}, rows.map((r) => h("tr", {}, h("td", {}, (I[S.lang].role_ || {})[r.role] || S.snap.cfg.slots[r.role]?.label[S.lang] || r.role), h("td", {}, h("a", { href: browserLink(r.code), target: "_blank", rel: "noopener", class: "mono" }, r.code)),
+        h("td", {}, r.role === "finding site" ? (S.lang === "sv" ? S.finding.site.sv || S.finding.site.en : S.finding.site.en) : r.role === "finding" ? (S.lang === "sv" ? S.finding.sv || S.finding.en : S.finding.en) : lab(r.code)), h("td", {}, statusCell(r.code))))))));
+  }
+}
+
+function renderFoot() {
+  $("#foot").textContent = t("foot");
+}
+
+init();
