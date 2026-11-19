@@ -31,3 +31,9 @@ test("a name or a street address is recognised; a capitalised first word and low
   assert.equal(personalDataReason("lives at Kungsgatan 12"), "address");
   for (const t of ["Smärta i vänster tumme sedan två dagar", "Pain in the right knee", "ont i huvudet, Feber sedan igår", "headache and fever for 3 days"]) assert.equal(personalDataReason(t), null, t);
 });
+
+test("a name at the very start, as in a spoken sentence, is recognised", () => {
+  assert.equal(personalDataReason("Anna Svensson har ont i magen"), "name");
+  assert.equal(personalDataReason("Ont i magen kommer och går"), null);
+  assert.equal(personalDataReason("Kraftig huvudvärk i tre dagar"), null);
+});

@@ -13,11 +13,13 @@ import { personalDataReason, PERSONAL_DATA_ERROR } from "./guard.js";
 
 import { I } from "./i18n.js";
 import { serializeList, parseList, MAX_BYTES } from "./listio.js";
+import * as ML from "./ml.js";
 
 const S = {
   snap: null, source: "snapshot", known: new Map(), universe: [], optionsLoaded: new Set(), live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
   finding: null, values: {}, prefilled: new Set(), duration: null, expanded: new Set(), confirmed: false,
   tab: "expr", validation: {}, manual: "", sampleHit: null, chart: [], editing: null, scope: "one", multi: null,
+  ml: { sem: "off", semMsg: "", mic: "idle", micMsg: "", info: null, status: "" }, semMode: "fusion", semHi: 0.98,
   map: { view: "front", main: "front", side: null, sel: null, topic: "all", more: false }, prefilledMap: new Set(),
 };
 const CODE_OF_SIDE = { left: "7771000", right: "24028007" };
@@ -132,7 +134,28 @@ async function clientCandidates(q0, k = 5) {
     return { ...e, score: +score.toFixed(4), confidence: +Math.min(1, score).toFixed(3), scores: { filter: true, lex: +lex.toFixed(3), emb: null } };
   });
   rows.sort((a, b) => b.score - a.score || (a.en || a.sv || "").length - (b.en || b.sv || "").length);
-  const top = rows.slice(0, 12);
+  let ranked = rows;
+  if (S.ml.sem === "ready" && S.semMode !== "off") {
+    // meaning, computed in this browser: concepts whose names are close to the text even when no word matches ("jätteont i huvudet")
+    try {
+      const sem = await ML.semanticSearch(q0, 30);
+      const cos = new Map(sem.map((x) => [x.code, x.cos]));
+      let order = S.semMode === "only" ? sem.map((x) => x.code) : ML.fuseRanks([rows.map((r) => r.code), sem.map((x) => x.code)]);
+      // a confident word match keeps the first place (measured: it is right more often than the closest meaning); meaning fills in behind it
+      if (S.semMode === "fusion" && rows.length && rows[0].score >= 0.45) order = [rows[0].code, ...order.filter((c) => c !== rows[0].code)];
+      const byCode = new Map(rows.map((r) => [r.code, r]));
+      ranked = order.map((code) => {
+        let r = byCode.get(code);
+        if (!r) { const u = S.known.get(code); if (!u) return null; r = { code, en: u[1], sv: u[2], topic: u[3], score: 0, confidence: 0, scores: { filter: false, lex: 0, emb: null } }; }
+        const c = cos.get(code);
+        r.scores.emb = c === undefined ? null : +c.toFixed(3);
+        // a very close meaning counts as a confident match even without a shared word
+        if (c !== undefined && c >= S.semHi) { r.score = Math.max(r.score, 0.5); r.confidence = Math.max(r.confidence, +Math.min(1, c).toFixed(3)); }
+        return r;
+      }).filter(Boolean);
+    } catch (_) { ranked = rows; /* the word search still stands */ }
+  }
+  const top = ranked.slice(0, 12);
   const missing = top.filter((r) => !r.en).map((r) => r.code);
   if (missing.length) {
     try {
@@ -161,6 +184,14 @@ async function candidatesFor(rest, rawText) {
 }
 
 async function interpret() {
+  // one interpretation at a time, in the order they were asked for: a typed text and a spoken one can never mix their results
+  S.busy = (S.busy || 0) + 1;
+  const run = (interpretChain = interpretChain.then(() => interpretNow(), () => interpretNow()));
+  try { await run; } finally { S.busy--; }
+}
+let interpretChain = Promise.resolve();
+
+async function interpretNow() {
   S.confirmed = false;
   S.multi = null;
   if (personalDataReason(S.text)) {
@@ -371,6 +402,98 @@ function renderMulti(box) {
   const ok = items.map((it, i) => (it.status === "ok" ? i : -1)).filter((i) => i >= 0);
   if (ok.length > 1) box.append(h("button", { type: "button", class: "primary", id: "add-all", onclick: () => multiAdd(ok) }, `${t("addAll")} (${ok.length})`));
 }
+
+// ------------------------------------------------------------------------------------------------ local models (optional)
+/** Every finding of the topics, [code, en, sv, topic]: the local copy, or fetched from the terminology server page by page. */
+async function universeRows() {
+  if (S.source !== "client") return S.universe;
+  const by = new Map();
+  for (const tp of S.snap.cfg.topics) for (const lang of ["en", "sv"]) {
+    for (let offset = 0; ;) {
+      const r = await TX.expand(tp.ecl, { lang, count: 1000, offset });
+      for (const it of r.items) { const e = by.get(it.code) || { code: it.code, en: null, sv: null, topic: tp.id }; e[lang] = it.display; by.set(it.code, e); }
+      offset += r.items.length;
+      if (r.items.length < 1000) break; // a short page is the last one (the server's total is not relied on)
+    }
+  }
+  const rows = [];
+  for (const e of by.values()) {
+    if (e.sv === e.en) e.sv = null;
+    if (!S.known.has(e.code)) S.known.set(e.code, [e.code, e.en, e.sv, e.topic]);
+    rows.push([e.code, e.en, e.sv, e.topic]);
+  }
+  return rows;
+}
+
+const pct = (p) => (p && p.total ? ` ${Math.round(100 * p.loaded / p.total)} %` : "");
+/** Progress goes to the status line only: the buttons are not rebuilt, so keyboard focus stays where it is. */
+function mlStatus(text) { S.ml.status = text || ""; const el = $("#ml-status"); if (el) el.textContent = S.ml.status; }
+
+async function enableSemantic() {
+  if (S.ml.sem === "loading" || S.ml.sem === "ready") return;
+  S.ml.sem = "loading"; S.ml.semMsg = ""; renderMl(); mlStatus(`${t("semLoading")}: ${t("semFetch")}`);
+  try {
+    const rows = await universeRows();
+    S.ml.info = await ML.buildIndex(rows, (p) => mlStatus(`${t("semLoading")}: ` + (p.what === "embedding" ? `${t("semEmbed")} ${p.loaded}/${p.total}` : t("semModel") + pct(p))));
+    S.ml.sem = "ready"; S.ml.status = "";
+  } catch (e) { S.ml.sem = "error"; S.ml.semMsg = String((e && e.message) || e); S.ml.status = ""; }
+  renderMl();
+}
+
+let recorder = null, micTimer = null;
+function micFail(e) { clearTimeout(micTimer); if (recorder) { try { recorder.cancel(); } catch (_) { /* already stopped */ } recorder = null; } S.ml.mic = "error"; S.ml.micMsg = String((e && e.message) || e); S.ml.status = ""; renderMl(); }
+
+async function toggleMic() {
+  const M = S.ml;
+  if (M.mic === "working" || M.mic === "starting") return; // a second click while the permission prompt is open must not start a second recorder
+  if (M.mic !== "recording") {
+    M.mic = "starting"; M.micMsg = ""; renderMl(); mlStatus(t("micStarting"));
+    try { recorder = await ML.startRecording(); } catch (e) { recorder = null; micFail(e); return; }
+    M.mic = "recording"; renderMl(); mlStatus(t("micRecording"));
+    micTimer = setTimeout(() => { if (S.ml.mic === "recording") toggleMic(); }, 30000);
+    return;
+  }
+  clearTimeout(micTimer);
+  M.mic = "working"; renderMl(); mlStatus(t("micWorking"));
+  const lang = S.lang;
+  try {
+    const rec = recorder; recorder = null;
+    const audio = await rec.stop();
+    const text = await ML.transcribe(audio, lang, (p) => mlStatus(t("micModel") + pct(p)));
+    M.mic = "idle"; M.status = ""; M.micMsg = text ? "" : t("micNothing");
+    renderMl();
+    if (text) { S.text = text; $("#text").value = text; await interpret(); } // the personal-data guard reads the transcript like any typed text
+  } catch (e) { micFail(e); }
+}
+
+function renderMl() {
+  const box = $("#ml");
+  if (!box) return;
+  const M = S.ml;
+  if (!box.dataset.ready) { // closing the panel while recording stops the recording and throws the sound away
+    box.dataset.ready = "1";
+    box.addEventListener("toggle", () => { if (!box.open && S.ml.mic === "recording") { clearTimeout(micTimer); try { recorder.cancel(); } catch (_) { /* nothing to stop */ } recorder = null; S.ml.mic = "idle"; S.ml.status = ""; renderMl(); } });
+  }
+  const semBtn = M.sem === "ready"
+    ? h("span", { class: "ok", id: "sem-status" }, "✓ " + t("semReady") + (M.info ? ` (${M.info.concepts})` : ""))
+    : h("button", { type: "button", class: "ghost small", id: "sem-on", disabled: M.sem === "loading", onclick: enableSemantic }, M.sem === "loading" ? t("semLoading") + "…" : t("semOn").replace("{mb}", String(ML.DOWNLOAD_MB.embed)));
+  const canMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  const micBtn = canMic ? h("button", { type: "button", class: M.mic === "recording" ? "primary small" : "ghost small", id: "mic", disabled: M.mic === "working" || M.mic === "starting", onclick: toggleMic },
+    M.mic === "recording" ? "● " + t("micStop") : t("micStart")) : null;
+  const hadFocus = document.activeElement && document.activeElement.id;
+  box.replaceChildren(
+    h("summary", {}, t("mlTitle")),
+    h("div", { class: "row tight" }, semBtn, micBtn),
+    h("p", { class: "hint", id: "ml-status", role: "status", "aria-live": "polite" }, M.status || ""),
+    M.sem === "error" ? h("p", { class: "warn", id: "sem-error", role: "alert" }, `${t("semError")}: ${M.semMsg}`) : null,
+    M.mic === "error" ? h("p", { class: "warn", id: "mic-error", role: "alert" }, `${t("micError")}: ${M.micMsg}`) : (M.micMsg ? h("p", { class: "hint", id: "mic-msg", role: "status" }, M.micMsg) : null),
+    canMic ? h("p", { class: "hint" }, t("micHint").replace("{mb}", String(ML.DOWNLOAD_MB.asr[S.lang] || ML.DOWNLOAD_MB.asr.en))) : null,
+    h("p", { class: "hint" }, t("mlNote")));
+  if (hadFocus === "mic" || hadFocus === "sem-on") { const el = $("#" + hadFocus); if (el && !el.disabled) el.focus(); }
+}
+
+window.__penpadML = ML; // for the tests
+window.__penpadApi = { clientCandidates: (q, k) => clientCandidates(q, k), enableSemantic: () => enableSemantic() };
 
 function visibleSlots(f) {
   if (!f) return [];
@@ -646,6 +769,7 @@ function renderInput() {
       h("div", { class: "row" }, h("button", { id: "go", type: "button", class: "primary" }, ""), h("button", { id: "rs", type: "button", class: "ghost" }, ""),
         h("button", { id: "open-list", type: "button", class: "ghost" }, ""), h("input", { id: "import-file", type: "file", accept: "application/json,.json", hidden: true })),
       h("p", { id: "list-msg", class: "hint", hidden: true }),
+      h("details", { id: "ml", class: "mlbox" }),
       h("p", { id: "notes", class: "hint" }), h("div", { id: "samples", class: "chips" }));
     $("#text").addEventListener("input", (e) => { S.text = e.target.value; });
     $("#text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); interpret(); } });
@@ -659,6 +783,8 @@ function renderInput() {
   if ($("#text").value !== S.text) $("#text").value = S.text;
   $("#go").textContent = t("go"); $("#rs").textContent = t("reset"); $("#open-list").textContent = t("openList");
   $("#notes").textContent = t(S.source === "client" ? "localNoteClient" : "localNote");
+  $("#ml").hidden = S.source !== "client"; // the local models are wired to the client mode (the public site)
+  renderMl();
   $("#samples").replaceChildren(h("span", { class: "seglabel" }, t("tryThese")),
     ...examples().map((txt) => h("button", { type: "button", class: "chip", onclick: () => { S.text = txt; $("#text").value = txt; interpret(); } }, txt.length > 46 ? txt.slice(0, 44) + "…" : txt)));
 }

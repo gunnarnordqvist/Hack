@@ -18,9 +18,9 @@ def known_tests() -> set:
         names |= set(re.findall(r'^test\("([^"]+)"', f.read_text(encoding="utf8"), re.M))
     for f in TESTS.glob("test_*.py"):
         names |= set(re.findall(r"^\s+def (test_\w+)", f.read_text(encoding="utf8"), re.M))
-    e2e = TESTS / "e2e.cjs"
-    if e2e.exists():
-        names |= set(re.findall(r'check\("([^"]+)"', e2e.read_text(encoding="utf8")))
+    for e2e in (TESTS / "e2e.cjs", TESTS / "e2e-ml.cjs"):
+        if e2e.exists():
+            names |= set(re.findall(r'check\("([^"]+)"', e2e.read_text(encoding="utf8")))
     return names
 
 

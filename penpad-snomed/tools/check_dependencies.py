@@ -71,7 +71,7 @@ def main() -> int:
             problems.append(f"dependency-policy.yaml lists action {name}, which no workflow uses")
 
     entries = []
-    for key in ("python", "python_dev", "actions", "vendored", "services", "models"):
+    for key in ("python", "python_dev", "actions", "vendored", "services", "models", "browser_optional"):
         entries += [(key, e) for e in policy.get(key, [])]
     entries += [("node.dev", e) for e in policy.get("node", {}).get("dev", [])]
     for key, e in entries:

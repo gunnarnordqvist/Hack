@@ -22,6 +22,7 @@ python_dev:   # requirements-dev.txt, tests and CI only
 
 node:
   runtime: []   # the web app has no npm dependencies: plain ES modules and the browser
+
   dev:
     - {name: playwright, version: "not pinned: installed globally in the development sandbox", source: "npm", purpose: "browser end-to-end tests (tests/e2e.cjs); not run in CI", reviewer: pending}
 
@@ -41,3 +42,9 @@ services:   # runtime data dependencies, not code
 models:   # local only, not part of the public site
   - {name: "google/embeddinggemma-2", licence: "Apache-2.0 (not gated)", purpose: "experiment: text and audio embeddings for picking a finding and filling answers (backend/eval_two_step.py, eval_voice.py); not used by the app", reviewer: pending}
   - {name: "FremyCompany/BioLORD-2023-M", licence: "ihtsdo-and-nlm-licences", purpose: "optional embedding re-rank in the local server", reviewer: pending}
+
+browser_optional:   # loaded by web/mlworker.js only after the visitor turns on "Local AI"; nothing is loaded otherwise
+  - {name: "@huggingface/transformers", version: "4.3.2", source: "cdn.jsdelivr.net/npm (version-pinned URL)", purpose: "runs the embedding and speech models in the browser (ONNX Runtime Web)", risk: "code from a CDN runs in a Web Worker of the page; it also fetches its ONNX Runtime wasm files from jsDelivr; no subresource integrity for a module import", reviewer: pending}
+  - {name: "Xenova/multilingual-e5-small", version: "main (not pinned to a revision)", source: "huggingface.co", licence: "MIT", purpose: "text embeddings for the semantic search, 118 MB", reviewer: pending}
+  - {name: "KBLab/kb-whisper-base", version: "main (not pinned to a revision)", source: "huggingface.co", licence: "Apache-2.0", purpose: "Swedish speech recognition in the browser, 181 MB", reviewer: pending}
+  - {name: "Xenova/whisper-base", version: "main (not pinned to a revision)", source: "huggingface.co", licence: "Apache-2.0", purpose: "English speech recognition in the browser, 76 MB", reviewer: pending}

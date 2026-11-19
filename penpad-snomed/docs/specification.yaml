@@ -37,7 +37,9 @@ rules:
   - everyday synonyms for severity, constancy, progress, onset and character are read, and none stands for two answers
   - no word of the word list stands for two different answers in the same language
 - id: R2
-  rule: Candidate findings come only from the terminology server's ECL result set; the model/lexical score only orders them.
+  rule: Candidate findings come only from the terminology server's ECL result set; the model/lexical score only orders them. An optional model in the visitor's
+    browser may add findings that are close in meaning; they are still concepts the terminology server returned (their names are fetched from it), and a
+    confident word match keeps the first place.
   example:
     given: a query for thumb pain
     then: every candidate id is in the server's expansion of the finding ECL
@@ -45,6 +47,11 @@ rules:
   tests:
   - test_every_candidate_is_in_the_server_universe
   - token overlap scoring
+  - concepts are ranked by their best name; ties never depend on the order of the list
+  - rank fusion rewards a code that both lists like
+  - 'names to embed: English and Swedish, the same string only once per concept'
+  - with the model 'jätteont i huvudet' has headache among the first five
+  - a plain word match is still picked first
 - id: R3
   rule: A finding without English term does not break ranking; ties are broken by the shorter name.
   example:
@@ -164,7 +171,8 @@ rules:
 - id: R8
   rule: 'Personal data guard: text that looks like a personal identity number, a phone number, an e-mail address, a name (two capitalised words) or a street
     address is never sent to the terminology server; a warning is shown. The published site contains no SNOMED CT content (no snapshot) and every file the
-    page imports exists; the repository holds no secrets.'
+    page imports exists; the repository holds no secrets. The optional local models are loaded only after the visitor opts in; speech is transcribed in
+    the browser, the sound is never sent anywhere, and no request to the library or model hosts carries the text.'
   example:
     given: '''191212121212'' typed as search'
     then: no request leaves the page
@@ -180,6 +188,13 @@ rules:
   - test_the_page_loads_only_files_that_exist
   - test_the_repository_has_no_findings
   - a name or a street address is recognised; a capitalised first word and lower-case symptom text are not
+  - a name at the very start, as in a spoken sentence, is recognised
+  - no model or library host is contacted before opting in
+  - no request to a model or library host carries the text (addresses, headers and bodies)
+  - requests go only to the site, the terminology server, jsDelivr and Hugging Face
+  - speech is turned into text in the browser
+  - the worker loads a pinned library version and the models are the ones in the dependency policy
+  - a double click starts one recording, and closing the panel stops it
 never_do:
 - Send anything that looks like personal data to an outside service.
 - Publish SNOMED CT content (snapshots, label files) or copyrighted material.

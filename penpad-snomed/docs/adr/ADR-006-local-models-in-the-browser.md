@@ -1,0 +1,6 @@
+# ADR-006: Optional local models in the browser (semantic search and speech)
+Status: built by the AI assistant at the owner's request (2026-11-19); reviewed by an independent AI agent, not by a person.
+**Context.** The public site has no server of its own and must not send speech or free text to a model service. The owner asked for Erik Sundvall's two-step idea as a web app on GitHub Pages.
+**Decision.** Off by default. On request, a Web Worker loads transformers.js (pinned version, jsDelivr) and runs multilingual-e5-small for meaning and Whisper (KB-Whisper for Swedish) for speech, in the visitor's browser. Finding names are fetched from the terminology server at run time and embedded locally; no SNOMED CT content is added to the repository. The word list still fills in the answers.
+**Why.** Measured: the right finding among the first five rises from 58 % to 83 % on our phrases without more wrong automatic picks; BioLORD cannot be distributed to visitors; EmbeddingGemma 2 was weaker in Swedish (docs/browser-ml.md, docs/eval-embeddinggemma2.md).
+**Consequences.** Two more third parties (jsDelivr, Hugging Face) after opting in; code from a CDN without integrity check; large downloads; numbers from our own phrases and synthetic speech. Supersedes the "no voice route yet" part of ADR-005 for the browser.
