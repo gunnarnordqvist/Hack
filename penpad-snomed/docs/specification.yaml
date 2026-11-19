@@ -34,6 +34,8 @@ rules:
   - a finding with no match inside the named body part says so instead of guessing
   - '''värk'' is the word for pain, not the character ''aching'': it stays in the text that is searched'
   - '''värk'' (pain) becomes the word the terms use, ''huvudvärk'' stays a word of its own'
+  - everyday synonyms for severity, constancy, progress, onset and character are read, and none stands for two answers
+  - no word of the word list stands for two different answers in the same language
 - id: R2
   rule: Candidate findings come only from the terminology server's ECL result set; the model/lexical score only orders them.
   example:
@@ -74,7 +76,8 @@ rules:
     Encounter and the Conditions, all linked by references). The list can be saved to a file and opened again; the file holds codes and answers only, never
     names, and is checked entry by entry when opened. A ready-made SNOMED CT aspect structure (e.g. Anterior aspect of knee) is shown as information, never
     as a replacement of the finding site. Terms missing in Swedish are shown in English and reported. Codes are validated against the server; a code with
-    non-digits is refused by the local server.'
+    non-digits is refused by the local server. In the SNOMED expression every attribute is in a role group of its own, in the order finding site, clinical
+    course, severity (as in Erik Sundvall''s clinergy-extractor).'
   example:
     given: a chosen finding with right side and severity
     then: all four outputs carry the same codes

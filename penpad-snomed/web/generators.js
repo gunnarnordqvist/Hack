@@ -124,8 +124,10 @@ export function expression(state, ctx) {
     else site = `${site}`;
     refinements.push(`{ ${a.findingSite} |Finding site| = ${site} }`);
   }
-  if (v.severity) refinements.push(`${a.severity} |Severity| = ${ex(v.severity, labels)}`);
-  if (v.onset) refinements.push(`${a.clinicalCourse} |Clinical course| = ${ex(v.onset, labels)}`);
+  // each attribute in its own role group, in the order finding site, clinical course, severity: the form Erik Sundvall's clinergy-extractor
+  // (tests/snomed_test.ts, Apache-2.0) uses after review against the SNOMED CT Editorial Guide
+  if (v.onset) refinements.push(`{ ${a.clinicalCourse} |Clinical course| = ${ex(v.onset, labels)} }`);
+  if (v.severity) refinements.push(`{ ${a.severity} |Severity| = ${ex(v.severity, labels)} }`);
   const focus = `${f.code} |${f.en}|`;
   const body = refinements.length ? `${focus} :\n  ${refinements.join(",\n  ")}` : focus;
   // the SNOMED CT model has no attribute for an aspect of a body structure, so it is kept as a comment and not claimed as part of the meaning

@@ -41,8 +41,10 @@ test("SNOMED expression", () => {
   const e = expression(thumbState(), ctx);
   assert.match(e, /^300955002 \|thumb ache\| :/);
   assert.match(e, /\{ 363698007 \|Finding site\| = \(76505004 \|thumb\| : 272741003 \|Laterality\| = 7771000 \|left\|\) \}/);
-  assert.match(e, /246112005 \|Severity\| = 6736007 \|moderate\|/);
-  assert.match(e, /263502005 \|Clinical course\| = 385315009 \|abrupt start\|/);
+  assert.match(e, /\{ 246112005 \|Severity\| = 6736007 \|moderate\| \}/);
+  assert.match(e, /\{ 263502005 \|Clinical course\| = 385315009 \|abrupt start\| \}/);
+  // every attribute is in a role group of its own, in the order site, course, severity
+  assert.equal(e, "300955002 |thumb ache| :\n  { 363698007 |Finding site| = (76505004 |thumb| : 272741003 |Laterality| = 7771000 |left|) },\n  { 263502005 |Clinical course| = 385315009 |abrupt start| },\n  { 246112005 |Severity| = 6736007 |moderate| }");
 });
 
 test("openEHR composition carries SNOMED codes and the archetype nodes", () => {

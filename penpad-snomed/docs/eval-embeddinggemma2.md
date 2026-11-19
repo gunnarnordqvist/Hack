@@ -69,6 +69,16 @@ Query = what is left of the phrase after the app's word list has taken out side,
 3. For voice, transcribe first (with a good Swedish recogniser) and keep the text path, rather than embedding the sound directly. A voice route in the browser would also send audio to whoever runs the recogniser; the personal-data guard only reads text.
 4. Needed before any of this is believed: phrases written and labelled by someone who has not seen the code, real voices and noise, and a decision on which recogniser.
 
+## After the measurement: the word list was extended
+The recommendation was to improve the word list rather than add a model, so general synonyms were added in `backend/topics.json` (severe: *outhärdlig, hemsk, terrible, unbearable*; constant: *hela tiden, all the time*; better: *lugnat sig, avtagit, eased, subsided*; worse: *tilltagande, increasing*; gradual: *smyga sig på, crept up*; burning: *brinner, burns* and a few more), with a test that no word stands for two answers. Answers read correctly (F1, `tools/compare_wordlists.mjs`):
+
+| Phrases | before | after |
+|---|---|---|
+| the 60 phrases (`gold-two-step.json`) | 86 | 98 |
+| 20 new phrases (`gold-heldout.json`) | 49 | 98 |
+
+**Read this with care.** The words were added after the 60 phrases had been seen, and the 20 new phrases were written afterwards by the same assistant with the new words in mind. The table shows that the added words work, not that the list now generalises. A person who has not seen the list should write the next test set.
+
 ## Faults found along the way
 * The app treated the plain Swedish word *värk* (pain) as the character *värkande* and removed it from the search. Fixed in `backend/topics.json` and `web/lexrank.js`, with tests.
 * The first version of the harness gave misleading numbers (threshold sweep that never cut, ties broken by list order, tuning on the test phrases, hand-set "known" flags). Corrected as described above.

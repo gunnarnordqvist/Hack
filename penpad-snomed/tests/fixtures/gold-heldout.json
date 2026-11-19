@@ -1,0 +1,227 @@
+{
+ "note": "20 phrases written after the word list was extended, by the same assistant (not independent). Codes only.",
+ "items": [
+  {
+   "lang": "sv",
+   "text": "outhärdlig värk i vänster axel sedan i morse",
+   "finding": [
+    "45326000",
+    "267949000"
+   ],
+   "slots": {
+    "severity": "24484000",
+    "laterality": "7771000"
+   }
+  },
+  {
+   "lang": "sv",
+   "text": "smärtan i nacken har tilltagit",
+   "finding": [
+    "81680005"
+   ],
+   "slots": {
+    "progress": "231877006"
+   }
+  },
+  {
+   "lang": "sv",
+   "text": "det brinner i högra handen hela tiden",
+   "finding": [
+    "53057004",
+    "202472008"
+   ],
+   "slots": {
+    "laterality": "24028007",
+    "character": "36349006",
+    "pattern": "255238004"
+   }
+  },
+  {
+   "lang": "sv",
+   "text": "hemsk huvudvärk som började plötsligt",
+   "finding": [
+    "25064002"
+   ],
+   "slots": {
+    "severity": "24484000",
+    "onset": "385315009"
+   }
+  },
+  {
+   "lang": "sv",
+   "text": "ont i tummen, det har avtagit",
+   "finding": [
+    "300955002"
+   ],
+   "slots": {
+    "progress": "3442003"
+   }
+  },
+  {
+   "lang": "sv",
+   "text": "lite ont i vänster knä",
+   "finding": [
+    "1003722009",
+    "1003721002"
+   ],
+   "slots": {
+    "severity": "255604002",
+    "laterality": "7771000"
+   }
+  },
+  {
+   "lang": "sv",
+   "text": "ont i höften, ingen skillnad",
+   "finding": [
+    "49218002",
+    "1348356003"
+   ],
+   "slots": {
+    "progress": "260388006"
+   }
+  },
+  {
+   "lang": "sv",
+   "text": "magen värker ständigt",
+   "finding": [
+    "271681002",
+    "21522001"
+   ],
+   "slots": {
+    "pattern": "255238004"
+   }
+  },
+  {
+   "lang": "sv",
+   "text": "ont i halsen sedan tre dagar, tilltagande",
+   "finding": [
+    "267102003"
+   ],
+   "slots": {
+    "progress": "231877006"
+   }
+  },
+  {
+   "lang": "sv",
+   "text": "dov värk i ryggen som smög sig på",
+   "finding": [
+    "161891005",
+    "279039007"
+   ],
+   "slots": {
+    "onset": "61751001"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "unbearable pain in the left shoulder since this morning",
+   "finding": [
+    "45326000",
+    "267949000"
+   ],
+   "slots": {
+    "severity": "24484000",
+    "laterality": "7771000"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "the pain in my neck has increased",
+   "finding": [
+    "81680005"
+   ],
+   "slots": {
+    "progress": "231877006"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "my right hand burns all the time",
+   "finding": [
+    "53057004",
+    "202472008"
+   ],
+   "slots": {
+    "laterality": "24028007",
+    "character": "36349006",
+    "pattern": "255238004"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "terrible headache that started suddenly",
+   "finding": [
+    "25064002"
+   ],
+   "slots": {
+    "severity": "24484000",
+    "onset": "385315009"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "thumb pain has subsided",
+   "finding": [
+    "300955002"
+   ],
+   "slots": {
+    "progress": "3442003"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "little bit of pain in the left knee",
+   "finding": [
+    "1003722009",
+    "1003721002"
+   ],
+   "slots": {
+    "severity": "255604002",
+    "laterality": "7771000"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "hip pain, no difference",
+   "finding": [
+    "49218002",
+    "1348356003"
+   ],
+   "slots": {
+    "progress": "260388006"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "my stomach aches constantly",
+   "finding": [
+    "271681002",
+    "21522001"
+   ],
+   "slots": {
+    "pattern": "255238004"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "sore throat for three days, getting worse",
+   "finding": [
+    "267102003"
+   ],
+   "slots": {
+    "progress": "231877006"
+   }
+  },
+  {
+   "lang": "en",
+   "text": "back pain that crept up slowly",
+   "finding": [
+    "161891005",
+    "279039007"
+   ],
+   "slots": {
+    "onset": "61751001"
+   }
+  }
+ ]
+}

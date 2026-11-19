@@ -388,12 +388,20 @@
         "lindriga",
         "lätt",
         "mild",
-        "svag"
+        "svag",
+        "obetydlig",
+        "obetydliga",
+        "lite",
+        "litet"
       ],
       "en": [
         "mild",
         "slight",
-        "light"
+        "light",
+        "minor",
+        "little",
+        "slightly",
+        "faint"
       ]
     },
     "6736007": {
@@ -413,35 +421,60 @@
         "kraftig",
         "kraftiga",
         "stark",
-        "starka"
+        "starka",
+        "outhärdlig",
+        "outhärdliga",
+        "hemsk",
+        "hemska",
+        "fruktansvärd",
+        "fruktansvärda"
       ],
       "en": [
         "severe",
         "intense",
-        "strong"
+        "strong",
+        "terrible",
+        "awful",
+        "unbearable",
+        "excruciating",
+        "horrible",
+        "agonising",
+        "agonizing",
+        "bad"
       ]
     },
     "385315009": {
       "sv": [
         "plötslig",
         "plötsligt",
-        "hastig"
+        "hastig",
+        "helt plötsligt",
+        "från ingenstans"
       ],
       "en": [
         "sudden",
         "suddenly",
-        "abrupt"
+        "abrupt",
+        "out of the blue",
+        "all of a sudden"
       ]
     },
     "61751001": {
       "sv": [
         "gradvis",
         "gradvisa",
-        "smygande"
+        "smygande",
+        "smyga sig på",
+        "smög sig på",
+        "långsamt"
       ],
       "en": [
         "gradual",
-        "gradually"
+        "gradually",
+        "crept up",
+        "creeping",
+        "slowly",
+        "insidious"
       ]
     },
     "1384228004": {
@@ -475,13 +508,20 @@
         "ständig",
         "ständigt",
         "kontinuerlig",
-        "kontinuerligt"
+        "kontinuerligt",
+        "hela tiden",
+        "jämt",
+        "oavbrutet"
       ],
       "en": [
         "constant",
         "continuous",
         "continuously",
-        "persistent"
+        "persistent",
+        "all the time",
+        "constantly",
+        "nonstop",
+        "non-stop"
       ]
     },
     "229803000": {
@@ -500,12 +540,22 @@
       "sv": [
         "bättre",
         "förbättras",
-        "förbättrats"
+        "förbättrats",
+        "lugnat sig",
+        "avtagit",
+        "minskat",
+        "gett med sig"
       ],
       "en": [
         "better",
         "improving",
-        "improved"
+        "improved",
+        "eased",
+        "eased off",
+        "easing",
+        "subsided",
+        "settled",
+        "settling"
       ]
     },
     "260388006": {
@@ -513,12 +563,16 @@
         "oförändrad",
         "oförändrat",
         "samma",
-        "ingen förändring"
+        "ingen förändring",
+        "likadant",
+        "ingen skillnad"
       ],
       "en": [
         "unchanged",
         "same",
-        "no change"
+        "no change",
+        "no difference",
+        "not changed"
       ]
     },
     "231877006": {
@@ -526,12 +580,20 @@
         "sämre",
         "värre",
         "förvärras",
-        "förvärrats"
+        "förvärrats",
+        "tilltagande",
+        "tilltagit",
+        "förvärrad",
+        "ökat"
       ],
       "en": [
         "worse",
         "worsening",
-        "worsened"
+        "worsened",
+        "increasing",
+        "increased",
+        "deteriorating",
+        "intensifying"
       ]
     },
     "27635008": {
@@ -567,10 +629,13 @@
     "36349006": {
       "sv": [
         "brännande",
-        "svidande"
+        "svidande",
+        "brinner",
+        "svider"
       ],
       "en": [
-        "burning"
+        "burning",
+        "burns"
       ]
     },
     "37378003": {

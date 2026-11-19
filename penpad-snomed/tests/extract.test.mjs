@@ -70,3 +70,28 @@ test("'värk' is the word for pain, not the character 'aching': it stays in the 
   assert.match(r.rest, /värk/);
   assert.equal(run("värkande knä").values.character, "27635008"); // the adjective is still the character
 });
+
+test("everyday synonyms for severity, constancy, progress, onset and character are read, and none stands for two answers", () => {
+  const v = (t) => run(t).values;
+  assert.equal(v("outhärdlig värk").severity, "24484000");
+  assert.equal(v("terrible headache").severity, "24484000");
+  assert.equal(v("lite ont i knät").severity, "255604002");
+  assert.equal(v("pain all the time").pattern, "255238004");
+  assert.equal(v("ont hela tiden").pattern, "255238004");
+  assert.equal(v("it has eased off").progress, "3442003");
+  assert.equal(v("smärtan har avtagit").progress, "3442003");
+  assert.equal(v("the pain has increased").progress, "231877006");
+  assert.equal(v("det smög sig på").onset, "61751001");
+  assert.equal(v("pain that crept up").onset, "61751001");
+  assert.equal(v("det brinner i handen").character, "36349006");
+  assert.equal(v("ont, ingen skillnad").progress, "260388006");
+});
+
+test("no word of the word list stands for two different answers in the same language", async () => {
+  const seen = new Map();
+  for (const [code, d] of Object.entries(cfg.lexicon)) for (const lang of ["sv", "en"]) for (const w of d[lang] || []) {
+    const k = lang + ":" + w;
+    assert.ok(!seen.has(k) || seen.get(k) === code, `${k} is both ${seen.get(k)} and ${code}`);
+    seen.set(k, code);
+  }
+});
