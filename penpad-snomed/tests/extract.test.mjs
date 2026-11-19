@@ -62,3 +62,11 @@ test("relative time words: last week, last month, förra veckan", () => {
   assert.deepEqual(run("pain for last month").duration, { n: 30, unit: "day" });
   assert.deepEqual(run("ont i knät sedan förra veckan").duration, { n: 7, unit: "day" });
 });
+
+test("'värk' is the word for pain, not the character 'aching': it stays in the text that is searched", () => {
+  const r = run("värk i höger knä som blivit sämre");
+  assert.equal(r.values.character, undefined);
+  assert.equal(r.values.laterality, "24028007");
+  assert.match(r.rest, /värk/);
+  assert.equal(run("värkande knä").values.character, "27635008"); // the adjective is still the character
+});

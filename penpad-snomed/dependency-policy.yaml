@@ -12,6 +12,10 @@ python:   # requirements-optional.txt, only for the local embedding re-rank
   - {name: sentence-transformers, version: "6.3.0", source: "PyPI", purpose: "loads the embedding model and encodes text", reviewer: pending}
   - {name: torch, version: "2.15.0", source: "PyTorch CPU index (download.pytorch.org/whl/cpu)", purpose: "runtime for the embedding model", reviewer: pending}
   - {name: transformers, version: "5.23.0", source: "PyPI", purpose: "model code used by sentence-transformers (pinned for reproducibility)", reviewer: pending}
+  - {name: pillow, version: "13.0.0", source: "PyPI", purpose: "EmbeddingGemma 2 loads an image processor even when only text is embedded", reviewer: pending}
+  - {name: torchvision, version: "0.29.2", source: "PyTorch CPU index (download.pytorch.org/whl/cpu)", purpose: "same reason as pillow", reviewer: pending}
+  - {name: soundfile, version: "0.14.0", source: "PyPI", purpose: "reads wav files for the audio encoder of EmbeddingGemma 2 (experiment only)", reviewer: pending}
+  - {name: soxr, version: "1.1.0", source: "PyPI", purpose: "resampling for the audio encoder of EmbeddingGemma 2 (experiment only)", reviewer: pending}
 
 python_dev:   # requirements-dev.txt, tests and CI only
   - {name: PyYAML, version: "6.0.3", source: "PyPI", purpose: "reads this policy and docs/specification.yaml in the checkers", reviewer: pending}
@@ -35,4 +39,5 @@ services:   # runtime data dependencies, not code
   - {name: "HL7 Nordics terminology server", url: "https://tx-nordics.fhir.org/fhir/r4", purpose: "SNOMED CT content at run time (client mode); receives the search words typed by the visitor", risk: "third party; availability and terms are outside our control", reviewer: pending}
 
 models:   # local only, not part of the public site
+  - {name: "google/embeddinggemma-2", licence: "Apache-2.0 (not gated)", purpose: "experiment: text and audio embeddings for picking a finding and filling answers (backend/eval_two_step.py, eval_voice.py); not used by the app", reviewer: pending}
   - {name: "FremyCompany/BioLORD-2023-M", licence: "ihtsdo-and-nlm-licences", purpose: "optional embedding re-rank in the local server", reviewer: pending}

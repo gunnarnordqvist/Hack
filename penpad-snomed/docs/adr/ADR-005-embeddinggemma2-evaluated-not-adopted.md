@@ -1,0 +1,6 @@
+# ADR-005: EmbeddingGemma 2 is evaluated, not adopted
+Status: proposed by the AI assistant after a first measurement (docs/eval-embeddinggemma2.md); not decided by the owner.
+**Context.** Erik Sundvall suggested two steps with EmbeddingGemma 2: speech picks the form, a second step fills it in.
+**Decision (proposal).** Keep BioLORD as the optional local re-ranker and the word list for the answers. Do not add EmbeddingGemma 2 or a voice route to the app yet.
+**Why.** On our 60 own phrases BioLORD found the finding in the first five in 87% of cases against 72% for EmbeddingGemma 2 (Swedish 80% against 53%); span matching with EmbeddingGemma 2 did not beat the word list for the answers (F1 75 against 86; together 85); embedding the sound directly found the finding in the first five in 38% against 60% via a transcript.
+**Consequences.** The numbers come from phrases written by the same assistant that built the word list, with synthetic speech, and the intervals are wide. A person who has not seen the code should write phrases and record real voices before this is decided. A voice route would send audio to whoever runs the recogniser and is not covered by the personal-data guard, which reads text only.

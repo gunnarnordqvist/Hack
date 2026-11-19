@@ -1,0 +1,674 @@
+{
+ "note": "Written by the AI assistant (not independent of the code). Codes only; no SNOMED CT names. 'finding' lists the acceptable concepts.",
+ "items": [
+  {
+   "lang": "sv",
+   "text": "ont i vänster tumme sedan igår, bultande",
+   "finding": [
+    "300955002"
+   ],
+   "slots": {
+    "laterality": "7771000",
+    "character": "29695002"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "kraftig huvudvärk i tre dagar",
+   "finding": [
+    "25064002"
+   ],
+   "slots": {
+    "severity": "24484000"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "svullen höger fot sedan en vecka, hård",
+   "finding": [
+    "297142003",
+    "762915008"
+   ],
+   "slots": {
+    "laterality": "24028007",
+    "consistency": "72505002"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "ont i magen, kommer och går",
+   "finding": [
+    "271681002",
+    "21522001"
+   ],
+   "slots": {
+    "pattern": "7087005"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "halsont sedan måndag",
+   "finding": [
+    "267102003"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "värk i höger knä som blivit sämre",
+   "finding": [
+    "1003722009",
+    "1003721002"
+   ],
+   "slots": {
+    "laterality": "24028007",
+    "progress": "231877006"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "lindrig smärta i vänster axel",
+   "finding": [
+    "45326000",
+    "267949000"
+   ],
+   "slots": {
+    "severity": "255604002",
+    "laterality": "7771000"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "svullet vänster knä, fast",
+   "finding": [
+    "248491001",
+    "299322007"
+   ],
+   "slots": {
+    "laterality": "7771000",
+    "consistency": "20583004"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "plötslig bröstsmärta, molande",
+   "finding": [
+    "29857009",
+    "3368006"
+   ],
+   "slots": {
+    "onset": "385315009",
+    "character": "83644001"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "tandvärk sedan i går",
+   "finding": [
+    "27355003"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "feber och hosta sedan tre dagar",
+   "finding": [
+    "386661006",
+    "49727002"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "yrsel som kommer och går",
+   "finding": [
+    "404640003"
+   ],
+   "slots": {
+    "pattern": "7087005"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "jätteont i huvudet",
+   "finding": [
+    "25064002"
+   ],
+   "slots": {
+    "severity": "24484000"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "det värker i vänster höft hela tiden",
+   "finding": [
+    "49218002",
+    "1348356003"
+   ],
+   "slots": {
+    "laterality": "7771000",
+    "pattern": "255238004"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "ganska lite ont i nacken",
+   "finding": [
+    "81680005"
+   ],
+   "slots": {
+    "severity": "255604002"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "magen gör ont, det har lugnat sig lite",
+   "finding": [
+    "271681002",
+    "21522001"
+   ],
+   "slots": {
+    "progress": "3442003"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "det började smyga sig på i ryggen",
+   "finding": [
+    "161891005",
+    "279039007"
+   ],
+   "slots": {
+    "onset": "61751001"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "ont i båda händerna, brinner",
+   "finding": [
+    "53057004",
+    "202472008"
+   ],
+   "slots": {
+    "laterality": "51440002",
+    "character": "36349006"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "illamående sedan i morse",
+   "finding": [
+    "422587007"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "klåda över hela kroppen",
+   "finding": [
+    "418290006"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "ont i halsen, helt oförändrat",
+   "finding": [
+    "267102003"
+   ],
+   "slots": {
+    "progress": "260388006"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "stark värk i höger underarm, tilltagande",
+   "finding": [
+    "444899003",
+    "774133001"
+   ],
+   "slots": {
+    "laterality": "24028007",
+    "severity": "24484000",
+    "progress": "231877006"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "hudutslag på magen",
+   "finding": [
+    "271807003"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "krampar i vaden, plötsligt",
+   "finding": [
+    "300954003"
+   ],
+   "slots": {
+    "onset": "385315009"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "svullen fotled, mjuk",
+   "finding": [
+    "267039000"
+   ],
+   "slots": {
+    "consistency": "37378003"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "kräkningar sedan i går kväll",
+   "finding": [
+    "422400008"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "ögonvärk på höger sida",
+   "finding": [
+    "41652007"
+   ],
+   "slots": {
+    "laterality": "24028007"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "andfådd när jag går uppför trappor",
+   "finding": [
+    "267036007"
+   ],
+   "slots": {},
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "sv",
+   "text": "diarré i två dagar",
+   "finding": [
+    "62315008"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "sv",
+   "text": "trött hela tiden",
+   "finding": [
+    "84229001"
+   ],
+   "slots": {
+    "pattern": "255238004"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "my left thumb hurts since yesterday, throbbing",
+   "finding": [
+    "300955002"
+   ],
+   "slots": {
+    "laterality": "7771000",
+    "character": "29695002"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "severe headache for three days",
+   "finding": [
+    "25064002"
+   ],
+   "slots": {
+    "severity": "24484000"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "swollen right foot for a week, hard",
+   "finding": [
+    "297142003",
+    "762915008"
+   ],
+   "slots": {
+    "laterality": "24028007",
+    "consistency": "72505002"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "stomach ache, on and off",
+   "finding": [
+    "271681002",
+    "21522001"
+   ],
+   "slots": {
+    "pattern": "7087005"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "sore throat since monday",
+   "finding": [
+    "267102003"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "pain in the right knee that got worse",
+   "finding": [
+    "1003722009",
+    "1003721002"
+   ],
+   "slots": {
+    "laterality": "24028007",
+    "progress": "231877006"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "mild pain in the left shoulder",
+   "finding": [
+    "45326000",
+    "267949000"
+   ],
+   "slots": {
+    "severity": "255604002",
+    "laterality": "7771000"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "swollen left knee, firm",
+   "finding": [
+    "248491001",
+    "299322007"
+   ],
+   "slots": {
+    "laterality": "7771000",
+    "consistency": "20583004"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "sudden chest pain, dull",
+   "finding": [
+    "29857009",
+    "3368006"
+   ],
+   "slots": {
+    "onset": "385315009",
+    "character": "83644001"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "toothache since yesterday",
+   "finding": [
+    "27355003"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "fever and cough for three days",
+   "finding": [
+    "386661006",
+    "49727002"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "dizzy on and off",
+   "finding": [
+    "404640003"
+   ],
+   "slots": {
+    "pattern": "7087005"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "terrible headache",
+   "finding": [
+    "25064002"
+   ],
+   "slots": {
+    "severity": "24484000"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "my left hip aches all the time",
+   "finding": [
+    "49218002",
+    "1348356003"
+   ],
+   "slots": {
+    "laterality": "7771000",
+    "pattern": "255238004"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "a little bit of pain in the neck",
+   "finding": [
+    "81680005"
+   ],
+   "slots": {
+    "severity": "255604002"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "tummy hurts, but it has eased off",
+   "finding": [
+    "271681002",
+    "21522001"
+   ],
+   "slots": {
+    "progress": "3442003"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "it crept up on me in the back",
+   "finding": [
+    "161891005",
+    "279039007"
+   ],
+   "slots": {
+    "onset": "61751001"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "pain in both hands, burning",
+   "finding": [
+    "53057004",
+    "202472008"
+   ],
+   "slots": {
+    "laterality": "51440002",
+    "character": "36349006"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "feeling sick since this morning",
+   "finding": [
+    "422587007"
+   ],
+   "slots": {},
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "itchy all over",
+   "finding": [
+    "418290006"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "throat is sore, no change",
+   "finding": [
+    "267102003"
+   ],
+   "slots": {
+    "progress": "260388006"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "bad pain in the right forearm, getting worse",
+   "finding": [
+    "444899003",
+    "774133001"
+   ],
+   "slots": {
+    "laterality": "24028007",
+    "severity": "24484000",
+    "progress": "231877006"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "rash on the stomach",
+   "finding": [
+    "271807003"
+   ],
+   "slots": {},
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "cramp in the calf, sudden",
+   "finding": [
+    "300954003"
+   ],
+   "slots": {
+    "onset": "385315009"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "swollen ankle, soft",
+   "finding": [
+    "267039000"
+   ],
+   "slots": {
+    "consistency": "37378003"
+   },
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "vomiting since last night",
+   "finding": [
+    "422400008"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "pain behind the right eye",
+   "finding": [
+    "41652007",
+    "86260003"
+   ],
+   "slots": {
+    "laterality": "24028007"
+   },
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "short of breath on the stairs",
+   "finding": [
+    "267036007"
+   ],
+   "slots": {},
+   "wordlist_knows_it": false
+  },
+  {
+   "lang": "en",
+   "text": "diarrhea for two days",
+   "finding": [
+    "62315008"
+   ],
+   "slots": {},
+   "wordlist_knows_it": true
+  },
+  {
+   "lang": "en",
+   "text": "tired all the time",
+   "finding": [
+    "84229001"
+   ],
+   "slots": {
+    "pattern": "255238004"
+   },
+   "wordlist_knows_it": false
+  }
+ ]
+}

@@ -32,6 +32,8 @@ rules:
   - whole body lists general findings such as fever
   - 'English: fever and cough are two general findings sharing the time'
   - a finding with no match inside the named body part says so instead of guessing
+  - '''värk'' is the word for pain, not the character ''aching'': it stays in the text that is searched'
+  - '''värk'' (pain) becomes the word the terms use, ''huvudvärk'' stays a word of its own'
 - id: R2
   rule: Candidate findings come only from the terminology server's ECL result set; the model/lexical score only orders them.
   example:

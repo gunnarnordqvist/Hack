@@ -16,8 +16,10 @@ Format: Keep a Changelog. No release has been tagged; tagging v0.1.0 is left to 
 - English check (tests/audit-en.cjs, tests/i18n.test.mjs); whole arm and leg as body parts; "last week/month" as time words.
 - General symptoms (fever, fatigue, nausea, vomiting, dizziness, cough, rash, dyspnoea, itching, diarrhoea, constipation, loss of appetite) and a Whole body button; later sentence parts without a body word are tried as findings of their own.
 - Save and open the list as a file (codes and answers only); FHIR Bundle with a demo Patient and Encounter; ready-made aspect concepts shown as information; the guard also blocks names and street addresses; tools/make_artifact.py removed.
+- EmbeddingGemma 2 experiment (backend/eval_two_step.py, eval_voice.py, docs/eval-embeddinggemma2.md, ADR-005): measured, not adopted.
 ### Fixed
 - Findings about the opposite side are no longer listed; English UI no longer shows Swedish suggestions.
 - English search: filler words dropped, synonyms and the server's order used in ranking; everyday pain words (hurts, ont) find the pain concept.
 - English: "stomach ache" gave a quadrant pain, "right leg" found nothing, "since last week" gave no time, and a side was written with a capital letter mid-sentence; a right-sided finding can no longer be offered "left" findings.
+- The Swedish word "värk" (pain) was read as the character "värkande" and removed from the search.
 - Site build omitted a new module; the build now copies all web files and is tested.

@@ -52,3 +52,9 @@ test("a pain suggestion that adds 'pain' to words that name neither pain nor swe
   assert.equal(addsTopicWord("sore throat", ["Sore throat"]), false);
   assert.equal(addsTopicWord("ont i magen", ["ont i magen"]), false);
 });
+
+test("'värk' (pain) becomes the word the terms use, 'huvudvärk' stays a word of its own", async () => {
+  const { normalizeSymptoms } = await import("../web/lexrank.js");
+  assert.equal(normalizeSymptoms("värk i knä"), "smärta i knä");
+  assert.equal(normalizeSymptoms("huvudvärk"), "huvudvärk");
+});
