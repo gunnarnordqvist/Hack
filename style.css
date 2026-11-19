@@ -158,3 +158,7 @@ button.secondary { font: inherit; padding: 8px 14px; border: 1px solid var(--acc
 .mitem .msent { margin: 6px 0 2px; font-size: 15.5px; }
 .mitem p { margin: 4px 0; }
 .tag.offreg { background: var(--warn-soft); color: var(--warn); }
+
+.mlbox { margin-top: 10px; border: 1px dashed var(--line); border-radius: 8px; padding: 6px 12px; }
+.mlbox summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+.mlbox[open] summary { margin-bottom: 8px; }
