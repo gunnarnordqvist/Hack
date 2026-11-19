@@ -9,7 +9,7 @@ const STOP = new Set(["i", "på", "av", "och", "en", "ett", "med", "om", "har", 
 export function normalizeSymptoms(t) {
   return (t || "")
     .replace(/\b(hurts|hurt|hurting|aches|ache|aching)\b/gi, "pain")
-    .replace(/(?<![\p{L}])(ont|värker|värkte)(?![\p{L}])/giu, "smärta")
+    .replace(/(?<![\p{L}])(ont|värk|värker|värkte)(?![\p{L}])/giu, "smärta")
     // adjectives and verbs for general symptoms -> the noun the terms use
     .replace(/\b(dizzy|giddy)\b/gi, "dizziness").replace(/\b(nauseous|nauseated)\b/gi, "nausea").replace(/\b(feverish)\b/gi, "fever")
     .replace(/\b(tired|exhausted)\b/gi, "fatigue").replace(/\b(itchy|itching)\b/gi, "itching").replace(/\b(coughing)\b/gi, "cough")
