@@ -84,7 +84,8 @@ rules:
     names, and is checked entry by entry when opened. A ready-made SNOMED CT aspect structure (e.g. Anterior aspect of knee) is shown as information, never
     as a replacement of the finding site. Terms missing in Swedish are shown in English and reported. Codes are validated against the server; a code with
     non-digits is refused by the local server. In the SNOMED expression every attribute is in a role group of its own, in the order finding site, clinical
-    course, severity (as in Erik Sundvall''s clinergy-extractor).'
+    course, severity (as in Erik Sundvall''s clinergy-extractor). In openEHR, pattern, progression, consistency and ''right and left'' are mapped as in
+    Erik Sundvall''s penpad-clinergy-workbench; only the aspect of a site remains unmapped.'
   example:
     given: a chosen finding with right side and severity
     then: all four outputs carry the same codes
@@ -121,6 +122,7 @@ rules:
   - opening the saved list brings the three findings back, with names from the server
   - a file that is not a saved list is refused and changes nothing
   - 'a ready-made aspect structure is information only: comment, extra FHIR body site, extra code row; the site is not replaced'
+  - 'openEHR: pattern, consistency and both sides are mapped the way Erik Sundvall''s workbench maps them'
 - id: R6
   rule: 'Findings offered for a body part named in the text must have their finding site inside that body part (SNOMED is-a, checked on the server); others
     are marked or left out. Body map: regions are drawn where anatomy says; clicking a region lists findings of that region (by SNOMED is-a on finding site);

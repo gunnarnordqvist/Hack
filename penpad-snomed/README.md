@@ -73,7 +73,7 @@ All of this was run, see `tests/`.
 - **Swedish terms are real SNOMED CT** (Swedish module via `displayLanguage=sv`), not translations of ours. Where the module has
   no term the English term is shown and the UI says so.
 - **English check:** `node tests/audit-en.cjs <url>` drives the whole app in English (examples, every region and close-up, aspect, list, several findings, warnings) and reports any visible line with Swedish text; `AUDIT_SELFTEST=1` shows that it does find Swedish on the Swedish page. `tests/i18n.test.mjs` checks that both languages have the same text keys. The local snapshot mode has no synonyms, so three English phrases that need them are only checked against the live terminology server.
-- **Tests:** 82 JavaScript (`node --test tests/*.test.mjs`), 37 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 65
+- **Tests:** 83 JavaScript (`node --test tests/*.test.mjs`), 37 Python (`python -m unittest discover -s tests -p "test_*.py"`), and 65
   browser checks run in **each of the modes** (`node tests/e2e.cjs <url> <dir>`, needs Playwright; set `HTTPS_PROXY` if
   outbound HTTPS needs a proxy). The unit tests use neutral fixture labels in our own words, not SNOMED terms.
 - **Candidate finder, own check on 14 phrases** (`backend/eval_candidates.py`, **our own labels, not a benchmark**; the

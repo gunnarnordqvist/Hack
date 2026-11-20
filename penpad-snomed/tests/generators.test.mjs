@@ -65,7 +65,24 @@ test("openEHR composition carries SNOMED codes and the archetype nodes", () => {
   const side = loc.items.find((i) => i.archetype_node_id === "at0002");
   assert.equal(side.value.defining_code.code_string, "at0003");
   assert.equal(side.value.mappings[0].target.code_string, "7771000");
-  assert.deepEqual(unmapped.map((u) => u.key), ["progress"]);
+  assert.equal(byNode.at0180.defining_code.code_string, "at0183"); // progression: worsening, the archetype's own code
+  assert.equal(byNode.at0180.mappings[0].target.code_string, "231877006");
+  assert.deepEqual(unmapped, []);
+});
+
+test("openEHR: pattern, consistency and both sides are mapped the way Erik Sundvall's workbench maps them", () => {
+  const s = thumbState({ values: { laterality: "51440002", pattern: "7087005", consistency: "20583004" }, duration: null });
+  const { composition, unmapped } = openEhr(s, ctx, { time: T });
+  const sym = composition.content[0].data.events[0].data.items.find((i) => i.archetype_node_id === "openEHR-EHR-CLUSTER.symptom_sign.v2");
+  const pattern = sym.items.find((i) => i.archetype_node_id === "at0003");
+  assert.equal(pattern.value.defining_code.code_string, "7087005");
+  const palp = sym.items.find((i) => i.archetype_node_id === "openEHR-EHR-CLUSTER.palpation_characteristics.v0");
+  assert.equal(palp.items[0].archetype_node_id, "at0001");
+  assert.equal(palp.items[0].value.defining_code.code_string, "at0003"); // firm
+  assert.equal(palp.items[0].value.mappings[0].target.code_string, "20583004");
+  const loc = sym.items.find((i) => i.archetype_node_id === "openEHR-EHR-CLUSTER.anatomical_location.v1");
+  assert.equal(loc.items.find((i) => i.archetype_node_id === "at0002").value.defining_code.code_string, "at0083"); // right and left
+  assert.deepEqual(unmapped, []);
 });
 
 test("FHIR Condition", () => {

@@ -55,6 +55,11 @@ what the server returns.
 The openEHR archetype nodes and at-codes follow Erik Sundvall's clinergy-extractor (Apache-2.0), which cites the published CKM
 archetypes. https://github.com/erik-sundvalls-bots/clinergy-extractor
 
+The mapping of pattern (at0003), progression (at0180 with its local codes), consistency (the draft archetype
+`openEHR-EHR-CLUSTER.palpation_characteristics.v0`, not in CKM) and "right and left" (at0083) follows Erik Sundvall's
+penpad-clinergy-workbench (Apache-2.0), `src/openehr/compose.ts`: https://github.com/erik-sundvalls-bots/penpad-clinergy-workbench
+No code was copied; the node ids and codes are used as he mapped them.
+
 ## Embedding model (optional, local only)
 
 `FremyCompany/BioLORD-2023-M` has its own licence (`ihtsdo-and-nlm-licences`). It is used only by the optional local server,

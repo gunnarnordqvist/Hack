@@ -19,6 +19,7 @@ Format: Keep a Changelog. No release has been tagged; tagging v0.1.0 is left to 
 - EmbeddingGemma 2 experiment (backend/eval_two_step.py, eval_voice.py, docs/eval-embeddinggemma2.md, ADR-005): measured, not adopted.
 - Word list: general synonyms for severity, constancy, progress, onset and character (tools/compare_wordlists.mjs, tests/fixtures/gold-heldout.json).
 - Optional local AI in the browser: semantic search (multilingual-e5-small) and speech (KB-Whisper/Whisper) with transformers.js in a Web Worker; docs/browser-ml.md, ADR-006, tests/e2e-ml.cjs, tools/eval_browser*.cjs.
+- openEHR: pattern, progression, consistency and bilateral side are now mapped (after Erik Sundvall's penpad-clinergy-workbench, Apache-2.0); only the aspect remains unmapped.
 ### Fixed
 - Findings about the opposite side are no longer listed; English UI no longer shows Swedish suggestions.
 - English search: filler words dropped, synonyms and the server's order used in ranking; everyday pain words (hurts, ont) find the pain concept.
