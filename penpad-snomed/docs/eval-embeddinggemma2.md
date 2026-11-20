@@ -69,6 +69,21 @@ Query = what is left of the phrase after the app's word list has taken out side,
 3. For voice, transcribe first (with a good Swedish recogniser) and keep the text path, rather than embedding the sound directly. A voice route in the browser would also send audio to whoever runs the recogniser; the personal-data guard only reads text.
 4. Needed before any of this is believed: phrases written and labelled by someone who has not seen the code, real voices and noise, and a decision on which recogniser.
 
+## Follow-up: exactly the form's options, with a synonym list (Erik's question)
+In step 2 the model was loaded with exactly the answer options of the form (57 strings: the English and Swedish term of each option, plus a
+short form without words like "pain") and **no synonyms**. Adding the word list's synonyms as extra strings for each option (174 strings; the
+word list as it was before it was extended on these phrases) gives, F1 on the 60 phrases with settings chosen on one half and scored on the other:
+
+| | all | Swedish | English |
+|---|---|---|---|
+| word list alone | 86 | 85 | 87 |
+| EmbeddingGemma 2, the form's options only | 75 | 69 | 81 |
+| EmbeddingGemma 2, options + synonym list | 81 | 77 | 86 |
+
+Synonyms help the model clearly, and in English it then equals the word list (86 against 87); in Swedish it stays behind (77 against 85). It was
+given the same synonyms the word list has, so it does not add recall beyond them here. Step 1 was loaded with every finding of the three topics
+(2,557 concepts, their English and Swedish terms, no synonyms), not with the options of one form.
+
 ## After the measurement: the word list was extended
 The recommendation was to improve the word list rather than add a model, so general synonyms were added in `backend/topics.json` (severe: *outhärdlig, hemsk, terrible, unbearable*; constant: *hela tiden, all the time*; better: *lugnat sig, avtagit, eased, subsided*; worse: *tilltagande, increasing*; gradual: *smyga sig på, crept up*; burning: *brinner, burns* and a few more), with a test that no word stands for two answers. Answers read correctly (F1, `tools/compare_wordlists.mjs`):
 
