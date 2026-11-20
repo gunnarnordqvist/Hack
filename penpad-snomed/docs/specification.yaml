@@ -202,7 +202,7 @@ rules:
   - phones and devices with little memory get the small speech model, a desktop gets the base model
   - after a closed tab the text and the list are back and the speech button is off
   - '''try anyway'' turns the speech button on again'
-  - 'the device''s own speech recognition: the API is found under either name, and not found when absent'
+  - 'the device''s speech recognition: the API is found under either name, and not found when absent'
   - 'the device''s speech recognition: language, interim words, and the final text on stop'
   - 'the device''s speech recognition: an error is reported in words, and a result wins over a late error'
   - 'the device''s speech recognition: stop after the recogniser ended on its own still gives the text'
