@@ -141,8 +141,11 @@ export function expression(state, ctx) {
 const OE = {
   composition: { archetype: "openEHR-EHR-COMPOSITION.encounter.v1", category: { code: "433", text: "event" }, setting: { code: "228", text: "primary medical care" } },
   story: { archetype: "openEHR-EHR-OBSERVATION.story.v1", node: "at0004" },
-  symptom: { archetype: "openEHR-EHR-CLUSTER.symptom_sign.v2", name: "at0001", severity: "at0021", duration: "at0028", onset: "at0164", character: "at0189" },
-  location: { archetype: "openEHR-EHR-CLUSTER.anatomical_location.v1", name: "at0001", laterality: "at0002", left: "at0003", right: "at0004" },
+  symptom: { archetype: "openEHR-EHR-CLUSTER.symptom_sign.v2", name: "at0001", severity: "at0021", duration: "at0028", onset: "at0164", character: "at0189", pattern: "at0003", progression: "at0180" },
+  progress: { "3442003": ["at0181", "Improving"], "260388006": ["at0182", "Unchanged"], "231877006": ["at0183", "Worsening"] },
+  palpation: { archetype: "openEHR-EHR-CLUSTER.palpation_characteristics.v0", consistency: "at0001" },
+  consistency: { "37378003": ["at0002", "Soft"], "20583004": ["at0003", "Firm"], "72505002": ["at0004", "Hard"] },
+  location: { archetype: "openEHR-EHR-CLUSTER.anatomical_location.v1", name: "at0001", laterality: "at0002", left: "at0003", right: "at0004", both: "at0083" },
   severity: { "255604002": "at0023", "6736007": "at0024", "24484000": "at0025" },
   templateId: "penpad-snomed-symptom.v0",
 };
@@ -184,9 +187,9 @@ export function openEhr(state, ctx, opts = {}) {
   if (f.site) {
     const loc = [element(OE.location.name, "Body site name", coded(sitePlain(f.site, lang), "SNOMED-CT", f.site.code))];
     if (v.laterality) {
-      const local = v.laterality === "7771000" ? OE.location.left : v.laterality === "24028007" ? OE.location.right : null;
+      const local = v.laterality === "7771000" ? OE.location.left : v.laterality === "24028007" ? OE.location.right : v.laterality === "51440002" ? OE.location.both : null;
       if (local && f.site.lateralizable) loc.push(element(OE.location.laterality, "Laterality", coded(T(v.laterality), "local", local, v.laterality)));
-      else unmapped.push({ key: "laterality", reason: local ? "body site is not lateralizable" : "the archetype has local codes for left and right only" });
+      else unmapped.push({ key: "laterality", reason: local ? "body site is not lateralizable" : "the archetype has local codes for left, right and both only" });
     }
     if (v.aspect) unmapped.push({ key: "aspect", reason: "the anatomical location mapping we follow has no node for an aspect (anterior, medial ...)" });
     items.push(cluster(OE.location.archetype, "Anatomical location", loc));
@@ -207,8 +210,19 @@ export function openEhr(state, ctx, opts = {}) {
   }
   if (v.onset) items.push(element(OE.symptom.onset, "Onset timing", coded(T(v.onset), "SNOMED-CT", v.onset)));
   if (v.character) items.push(element(OE.symptom.character, "Character", coded(T(v.character), "SNOMED-CT", v.character)));
-  for (const slot of ["pattern", "progress", "consistency"]) {
-    if (v[slot]) unmapped.push({ key: slot, reason: "not in the verified template (CLUSTER.symptom_sign.v2 elements for this are not mapped yet)" });
+  // Pattern, progression and consistency follow Erik Sundvall's penpad-clinergy-workbench (src/openehr/compose.ts, Apache-2.0):
+  // Pattern at0003 (coded text), Progression at0180 with the archetype's own codes, and consistency in his draft archetype
+  // CLUSTER.palpation_characteristics.v0 (not in CKM yet) placed among the symptom's details.
+  if (v.pattern) items.push(element(OE.symptom.pattern, "Pattern", coded(T(v.pattern), "SNOMED-CT", v.pattern)));
+  if (v.progress) {
+    const local = OE.progress[v.progress];
+    if (local) items.push(element(OE.symptom.progression, "Progression", coded(local[1], "local", local[0], v.progress)));
+    else unmapped.push({ key: "progress", reason: "the archetype has local codes for improving, unchanged and worsening only" });
+  }
+  if (v.consistency) {
+    const local = OE.consistency[v.consistency];
+    if (local) items.push(cluster(OE.palpation.archetype, "Palpation characteristics", [element(OE.palpation.consistency, "Consistency", coded(local[1], "local", local[0], v.consistency))]));
+    else unmapped.push({ key: "consistency", reason: "the palpation archetype has local codes for soft, firm, hard and fluctuant only" });
   }
 
   const s = sentence({ ...state, mode: "clinician" }, ctx).text;
