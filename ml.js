@@ -213,3 +213,49 @@ export async function startRecording() {
     }),
   };
 }
+
+// ------------------------------------------------------------------------------------------------ the device's own speech recognition
+// The Web Speech API: Safari and iOS use Apple's recogniser, Chrome uses Google's. Far better than the small models that fit in a page,
+// but the browser's vendor may receive the audio (Chrome always does; Apple may process on the device or on its servers). The page cannot
+// know which, so it says so and lets the visitor choose the local model instead.
+export const speechApi = (w = typeof window !== "undefined" ? window : {}) => w.SpeechRecognition || w.webkitSpeechRecognition || null;
+const SPEECH_LANG = { sv: "sv-SE", en: "en-US" };
+const SPEECH_ERRORS = {
+  "not-allowed": "the microphone or speech recognition was not allowed",
+  "service-not-allowed": "speech recognition is switched off on this device (on iPhone: Settings > Keyboard > Enable Dictation, and Siri)",
+  "no-speech": "no speech was heard",
+  "audio-capture": "no microphone was found",
+  "network": "the speech service could not be reached",
+  "language-not-supported": "this language is not supported by the device's speech recognition",
+};
+
+/** Start the device's recogniser: {stop(): Promise<string> (the text), cancel()}. onInterim(text) gets the words as they are heard. */
+export function startSpeechApi(lang, onInterim, w = typeof window !== "undefined" ? window : {}) {
+  const SR = speechApi(w);
+  if (!SR) throw new Error("this browser has no speech recognition");
+  const rec = new SR();
+  rec.lang = SPEECH_LANG[lang] || SPEECH_LANG.en;
+  rec.interimResults = true;
+  rec.continuous = false;
+  rec.maxAlternatives = 1;
+  let finalText = "", interim = "", failed = null, ended = false, waiter = null;
+  const result = () => tidyTranscript(finalText + interim); // the same text that was shown while speaking: nothing that was heard is dropped
+  const done = () => (failed && !result() ? { error: new Error(failed) } : { text: result() });
+  const finish = () => { ended = true; if (waiter) { const d = done(); d.error ? waiter.reject(d.error) : waiter.resolve(d.text); waiter = null; } };
+  rec.onresult = (ev) => {
+    finalText = ""; interim = "";
+    for (let i = 0; i < ev.results.length; i++) { const r = ev.results[i]; if (r.isFinal) finalText += r[0].transcript + " "; else interim += r[0].transcript + " "; }
+    if (onInterim) onInterim(tidyTranscript(finalText + interim));
+  };
+  rec.onerror = (ev) => { failed = SPEECH_ERRORS[ev.error] || String(ev.error || "speech recognition failed"); };
+  rec.onend = finish;
+  rec.start();
+  return {
+    stop: () => new Promise((resolve, reject) => {
+      if (ended) { const d = done(); d.error ? reject(d.error) : resolve(d.text); return; }
+      waiter = { resolve, reject };
+      try { rec.stop(); } catch (_) { finish(); }
+    }),
+    cancel: () => { try { rec.onend = null; rec.abort(); } catch (_) { /* already stopped */ } },
+  };
+}

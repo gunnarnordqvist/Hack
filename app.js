@@ -19,7 +19,7 @@ const S = {
   snap: null, source: "snapshot", known: new Map(), universe: [], optionsLoaded: new Set(), live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
   finding: null, values: {}, prefilled: new Set(), duration: null, expanded: new Set(), confirmed: false,
   tab: "expr", validation: {}, manual: "", sampleHit: null, chart: [], editing: null, scope: "one", multi: null,
-  ml: { sem: "off", semMsg: "", mic: "idle", micMsg: "", info: null, status: "", crashed: null }, semMode: "fusion", semHi: 0.98,
+  ml: { sem: "off", semMsg: "", mic: "idle", micMsg: "", info: null, status: "", crashed: null, engine: (ML.speechApi() ? "device" : "local") }, semMode: "fusion", semHi: 0.98,
   map: { view: "front", main: "front", side: null, sel: null, topic: "all", more: false }, prefilledMap: new Set(),
 };
 const CODE_OF_SIDE = { left: "7771000", right: "24028007" };
@@ -473,12 +473,25 @@ async function enableSemantic() {
 let recorder = null, micTimer = null;
 function micFail(e) { heavyEnd(); clearTimeout(micTimer); if (recorder) { try { recorder.cancel(); } catch (_) { /* already stopped */ } recorder = null; } S.ml.mic = "error"; S.ml.micMsg = String((e && e.message) || e); S.ml.status = ""; renderMl(); }
 
+/** The text from the microphone goes into the text box and is interpreted like typed text (the personal-data guard reads it first). */
+async function useTranscript(text) {
+  const M = S.ml;
+  M.mic = "idle"; M.status = ""; M.micMsg = text ? "" : t("micNothing");
+  renderMl();
+  if (text) { S.text = text; $("#text").value = text; await interpret(); }
+}
+
 async function toggleMic() {
   const M = S.ml;
   if (M.mic === "working" || M.mic === "starting") return; // a second click while the permission prompt is open must not start a second recorder
+  const device = M.engine === "device" && !!ML.speechApi();
   if (M.mic !== "recording") {
     M.mic = "starting"; M.micMsg = ""; renderMl(); mlStatus(t("micStarting"));
-    try { recorder = await ML.startRecording(); } catch (e) { recorder = null; micFail(e); return; }
+    try {
+      recorder = device
+        ? ML.startSpeechApi(S.lang, (txt) => { $("#text").value = txt; }) // the words appear as they are heard
+        : await ML.startRecording();
+    } catch (e) { recorder = null; micFail(e); return; }
     M.mic = "recording"; renderMl(); mlStatus(t("micRecording"));
     micTimer = setTimeout(() => { if (S.ml.mic === "recording") toggleMic(); }, 30000);
     return;
@@ -488,13 +501,12 @@ async function toggleMic() {
   const lang = S.lang;
   try {
     const rec = recorder; recorder = null;
+    if (device) { await useTranscript(await rec.stop()); return; } // the device's recogniser: no model of ours is loaded
     const audio = await rec.stop();
     heavyStart("asr");
     const text = await ML.transcribe(audio, lang, (p) => mlStatus(t("micModel") + pct(p)));
     heavyEnd();
-    M.mic = "idle"; M.status = ""; M.micMsg = text ? "" : t("micNothing");
-    renderMl();
-    if (text) { S.text = text; $("#text").value = text; await interpret(); } // the personal-data guard reads the transcript like any typed text
+    await useTranscript(text);
   } catch (e) { micFail(e); }
 }
 
@@ -510,7 +522,9 @@ function renderMl() {
   const semBtn = M.sem === "ready"
     ? h("span", { class: "ok", id: "sem-status" }, "✓ " + t("semReady") + (M.info ? ` (${M.info.concepts})` : ""))
     : h("button", { type: "button", class: "ghost small", id: "sem-on", disabled: M.sem === "loading" || blocked("sem"), onclick: enableSemantic }, M.sem === "loading" ? t("semLoading") + "…" : t("semOn").replace("{mb}", String(ML.DOWNLOAD_MB.embed)));
-  const canMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  const hasDevice = !!ML.speechApi();
+  const device = hasDevice && M.engine === "device";
+  const canMic = device || !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
   const micBtn = canMic ? h("button", { type: "button", class: M.mic === "recording" ? "primary small" : "ghost small", id: "mic", disabled: M.mic === "working" || M.mic === "starting" || blocked("asr"), onclick: toggleMic },
     M.mic === "recording" ? "● " + t("micStop") : t("micStart")) : null;
   const hadFocus = document.activeElement && document.activeElement.id;
@@ -522,7 +536,11 @@ function renderMl() {
     h("p", { class: "hint", id: "ml-status", role: "status", "aria-live": "polite" }, M.status || ""),
     M.sem === "error" ? h("p", { class: "warn", id: "sem-error", role: "alert" }, `${t("semError")}: ${M.semMsg}`) : null,
     M.mic === "error" ? h("p", { class: "warn", id: "mic-error", role: "alert" }, `${t("micError")}: ${M.micMsg}`) : (M.micMsg ? h("p", { class: "hint", id: "mic-msg", role: "status" }, M.micMsg) : null),
-    canMic ? h("p", { class: "hint" }, t("micHint").replace("{mb}", String(ML.asrMB(S.lang))) + (ML.lowMemory() ? " " + t("lowMem") : "")) : null,
+    hasDevice ? h("div", { class: "row tight engine", role: "radiogroup", "aria-label": t("engine") },
+      h("label", {}, h("input", { type: "radio", name: "engine", value: "device", checked: M.engine === "device", disabled: M.mic !== "idle" && M.mic !== "error", onchange: () => { S.ml.engine = "device"; renderMl(); } }), " " + t("engineDevice")),
+      h("label", {}, h("input", { type: "radio", name: "engine", value: "local", checked: M.engine === "local", disabled: M.mic !== "idle" && M.mic !== "error", onchange: () => { S.ml.engine = "local"; renderMl(); } }), " " + t("engineLocal"))) : null,
+    device ? h("p", { class: "hint", id: "device-note" }, t("deviceNote")) : null,
+    canMic && !device ? h("p", { class: "hint" }, t("micHint").replace("{mb}", String(ML.asrMB(S.lang))) + (ML.lowMemory() ? " " + t("lowMem") : "")) : null,
     h("p", { class: "hint" }, t("mlNote")));
   if (hadFocus === "mic" || hadFocus === "sem-on") { const el = $("#" + hadFocus); if (el && !el.disabled) el.focus(); }
 }
