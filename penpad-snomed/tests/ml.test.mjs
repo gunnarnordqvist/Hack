@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { rankConcepts, fuseRanks, namesOf, resampleLinear, tidyTranscript, EMBED_MODEL, ASR_MODELS, DOWNLOAD_MB, LIB_VERSION } from "../web/ml.js";
+import { rankConcepts, fuseRanks, namesOf, resampleLinear, tidyTranscript, EMBED_MODEL, ASR_MODELS, ASR_SMALL, DOWNLOAD_MB, LIB_VERSION, lowMemory, asrModel, asrMB } from "../web/ml.js";
 import { readFileSync } from "node:fs";
 
 test("concepts are ranked by their best name; ties never depend on the order of the list", () => {
@@ -44,9 +44,22 @@ test("the worker loads a pinned library version and the models are the ones in t
   assert.equal(urls.length, 1);
   assert.match(urls[0], /^https:\/\/cdn\.jsdelivr\.net\/npm\/@huggingface\/transformers@\d+\.\d+\.\d+$/);
   const policy = readFileSync(new URL("../dependency-policy.yaml", import.meta.url), "utf8");
-  for (const m of [EMBED_MODEL, ASR_MODELS.sv, ASR_MODELS.en]) assert.ok(policy.includes(m), m + " missing in dependency-policy.yaml");
+  for (const m of [EMBED_MODEL, ASR_MODELS.sv, ASR_MODELS.en, ASR_SMALL.sv, ASR_SMALL.en]) assert.ok(policy.includes(m), m + " missing in dependency-policy.yaml");
   assert.equal(urls[0].split("@huggingface/transformers@")[1], LIB_VERSION);
   const line = policy.split("\n").find((l) => l.includes('"@huggingface/transformers"'));
   assert.ok(line && line.includes(`version: "${LIB_VERSION}"`), "library version missing on its line in the policy");
   assert.ok(DOWNLOAD_MB.embed > 0 && DOWNLOAD_MB.asr.sv > 0);
+});
+
+test("phones and devices with little memory get the small speech model, a desktop gets the base model", () => {
+  assert.equal(lowMemory({ userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit Safari" }), true);
+  assert.equal(lowMemory({ userAgent: "Mozilla/5.0 (Linux; Android 14) Chrome Mobile" }), true);
+  assert.equal(lowMemory({ userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", maxTouchPoints: 5 }), true); // iPad that says it is a Mac
+  assert.equal(lowMemory({ userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome", deviceMemory: 4 }), true);
+  assert.equal(lowMemory({ userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome", deviceMemory: 8, maxTouchPoints: 0 }), false);
+  assert.equal(lowMemory({ userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari", maxTouchPoints: 0 }), false);
+  assert.equal(asrModel("sv", true), "KBLab/kb-whisper-tiny");
+  assert.equal(asrModel("sv", false), "KBLab/kb-whisper-base");
+  assert.equal(asrModel("en", true), "Xenova/whisper-tiny");
+  assert.ok(asrMB("sv", true) < asrMB("sv", false));
 });

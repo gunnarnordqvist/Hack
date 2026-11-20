@@ -19,7 +19,7 @@ const S = {
   snap: null, source: "snapshot", known: new Map(), universe: [], optionsLoaded: new Set(), live: false, lang: "sv", mode: "clinician", text: "", ex: null, cand: null, candMode: "rerank",
   finding: null, values: {}, prefilled: new Set(), duration: null, expanded: new Set(), confirmed: false,
   tab: "expr", validation: {}, manual: "", sampleHit: null, chart: [], editing: null, scope: "one", multi: null,
-  ml: { sem: "off", semMsg: "", mic: "idle", micMsg: "", info: null, status: "" }, semMode: "fusion", semHi: 0.98,
+  ml: { sem: "off", semMsg: "", mic: "idle", micMsg: "", info: null, status: "", crashed: null }, semMode: "fusion", semHi: 0.98,
   map: { view: "front", main: "front", side: null, sel: null, topic: "all", more: false }, prefilledMap: new Set(),
 };
 const CODE_OF_SIDE = { left: "7771000", right: "24028007" };
@@ -100,6 +100,7 @@ async function init() {
     } catch (_) { S.live = false; }
   }
   render();
+  if (await recoverAfterCrash()) return; // the page was closed by the browser during a heavy step: put back what the visitor had
   const first = examples()[0];
   if (first) { S.text = first; interpret(); }
 }
@@ -403,6 +404,33 @@ function renderMulti(box) {
   if (ok.length > 1) box.append(h("button", { type: "button", class: "primary", id: "add-all", onclick: () => multiAdd(ok) }, `${t("addAll")} (${ok.length})`));
 }
 
+// ------------------------------------------------------------------------------------------------ a tab that the browser closes
+// A heavy step (building the semantic index, speech recognition) can use more memory than a phone allows; the browser then closes the tab
+// and reloads the page. Before such a step the text and the list are kept in this tab's session storage (never longer than the tab lives);
+// if the page comes back with the flag still set, the step is switched off, the text and the list are put back, and the visitor is told.
+const ML_FLAG = "penpad-ml-running", ML_SAVED = "penpad-ml-saved";
+const store = {
+  get(k) { try { return sessionStorage.getItem(k); } catch (_) { return null; } },
+  set(k, v) { try { sessionStorage.setItem(k, v); } catch (_) { /* no storage: nothing is kept */ } },
+  del(k) { try { sessionStorage.removeItem(k); } catch (_) { /* nothing */ } },
+};
+function heavyStart(kind) { store.set(ML_FLAG, kind); store.set(ML_SAVED, JSON.stringify({ text: S.text, list: serializeList(S.chart) })); }
+function heavyEnd() { store.del(ML_FLAG); store.del(ML_SAVED); }
+
+async function recoverAfterCrash() {
+  const kind = store.get(ML_FLAG);
+  if (!kind) return false;
+  let saved = null;
+  try { saved = JSON.parse(store.get(ML_SAVED) || "null"); } catch (_) { saved = null; }
+  heavyEnd();
+  S.ml.crashed = kind === "sem" || kind === "asr" ? kind : "asr";
+  if (saved && typeof saved.text === "string") { S.text = saved.text; $("#text").value = saved.text; }
+  if (saved && typeof saved.list === "string") await importListText(saved.list); // checked entry by entry like any opened list
+  render();
+  const d = $("#ml"); if (d) d.open = true;
+  return true;
+}
+
 // ------------------------------------------------------------------------------------------------ local models (optional)
 /** Every finding of the topics, [code, en, sv, topic]: the local copy, or fetched from the terminology server page by page. */
 async function universeRows() {
@@ -432,16 +460,18 @@ function mlStatus(text) { S.ml.status = text || ""; const el = $("#ml-status"); 
 async function enableSemantic() {
   if (S.ml.sem === "loading" || S.ml.sem === "ready") return;
   S.ml.sem = "loading"; S.ml.semMsg = ""; renderMl(); mlStatus(`${t("semLoading")}: ${t("semFetch")}`);
+  heavyStart("sem");
   try {
     const rows = await universeRows();
     S.ml.info = await ML.buildIndex(rows, (p) => mlStatus(`${t("semLoading")}: ` + (p.what === "embedding" ? `${t("semEmbed")} ${p.loaded}/${p.total}` : t("semModel") + pct(p))));
     S.ml.sem = "ready"; S.ml.status = "";
   } catch (e) { S.ml.sem = "error"; S.ml.semMsg = String((e && e.message) || e); S.ml.status = ""; }
+  heavyEnd();
   renderMl();
 }
 
 let recorder = null, micTimer = null;
-function micFail(e) { clearTimeout(micTimer); if (recorder) { try { recorder.cancel(); } catch (_) { /* already stopped */ } recorder = null; } S.ml.mic = "error"; S.ml.micMsg = String((e && e.message) || e); S.ml.status = ""; renderMl(); }
+function micFail(e) { heavyEnd(); clearTimeout(micTimer); if (recorder) { try { recorder.cancel(); } catch (_) { /* already stopped */ } recorder = null; } S.ml.mic = "error"; S.ml.micMsg = String((e && e.message) || e); S.ml.status = ""; renderMl(); }
 
 async function toggleMic() {
   const M = S.ml;
@@ -459,7 +489,9 @@ async function toggleMic() {
   try {
     const rec = recorder; recorder = null;
     const audio = await rec.stop();
+    heavyStart("asr");
     const text = await ML.transcribe(audio, lang, (p) => mlStatus(t("micModel") + pct(p)));
+    heavyEnd();
     M.mic = "idle"; M.status = ""; M.micMsg = text ? "" : t("micNothing");
     renderMl();
     if (text) { S.text = text; $("#text").value = text; await interpret(); } // the personal-data guard reads the transcript like any typed text
@@ -474,20 +506,23 @@ function renderMl() {
     box.dataset.ready = "1";
     box.addEventListener("toggle", () => { if (!box.open && S.ml.mic === "recording") { clearTimeout(micTimer); try { recorder.cancel(); } catch (_) { /* nothing to stop */ } recorder = null; S.ml.mic = "idle"; S.ml.status = ""; renderMl(); } });
   }
+  const blocked = (kind) => M.crashed === kind;
   const semBtn = M.sem === "ready"
     ? h("span", { class: "ok", id: "sem-status" }, "✓ " + t("semReady") + (M.info ? ` (${M.info.concepts})` : ""))
-    : h("button", { type: "button", class: "ghost small", id: "sem-on", disabled: M.sem === "loading", onclick: enableSemantic }, M.sem === "loading" ? t("semLoading") + "…" : t("semOn").replace("{mb}", String(ML.DOWNLOAD_MB.embed)));
+    : h("button", { type: "button", class: "ghost small", id: "sem-on", disabled: M.sem === "loading" || blocked("sem"), onclick: enableSemantic }, M.sem === "loading" ? t("semLoading") + "…" : t("semOn").replace("{mb}", String(ML.DOWNLOAD_MB.embed)));
   const canMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-  const micBtn = canMic ? h("button", { type: "button", class: M.mic === "recording" ? "primary small" : "ghost small", id: "mic", disabled: M.mic === "working" || M.mic === "starting", onclick: toggleMic },
+  const micBtn = canMic ? h("button", { type: "button", class: M.mic === "recording" ? "primary small" : "ghost small", id: "mic", disabled: M.mic === "working" || M.mic === "starting" || blocked("asr"), onclick: toggleMic },
     M.mic === "recording" ? "● " + t("micStop") : t("micStart")) : null;
   const hadFocus = document.activeElement && document.activeElement.id;
   box.replaceChildren(
     h("summary", {}, t("mlTitle")),
     h("div", { class: "row tight" }, semBtn, micBtn),
+    M.crashed ? h("div", { class: "warn", id: "crash-note", role: "alert" }, t(M.crashed === "sem" ? "crashSem" : "crashAsr"), " ",
+      h("button", { type: "button", class: "ghost small", id: "retry-anyway", onclick: () => { S.ml.crashed = null; renderMl(); } }, t("retryAnyway"))) : null,
     h("p", { class: "hint", id: "ml-status", role: "status", "aria-live": "polite" }, M.status || ""),
     M.sem === "error" ? h("p", { class: "warn", id: "sem-error", role: "alert" }, `${t("semError")}: ${M.semMsg}`) : null,
     M.mic === "error" ? h("p", { class: "warn", id: "mic-error", role: "alert" }, `${t("micError")}: ${M.micMsg}`) : (M.micMsg ? h("p", { class: "hint", id: "mic-msg", role: "status" }, M.micMsg) : null),
-    canMic ? h("p", { class: "hint" }, t("micHint").replace("{mb}", String(ML.DOWNLOAD_MB.asr[S.lang] || ML.DOWNLOAD_MB.asr.en))) : null,
+    canMic ? h("p", { class: "hint" }, t("micHint").replace("{mb}", String(ML.asrMB(S.lang))) + (ML.lowMemory() ? " " + t("lowMem") : "")) : null,
     h("p", { class: "hint" }, t("mlNote")));
   if (hadFocus === "mic" || hadFocus === "sem-on") { const el = $("#" + hadFocus); if (el && !el.disabled) el.focus(); }
 }
@@ -695,9 +730,14 @@ function saveList() {
 /** Open a saved list: codes and answers are read, names are fetched again from the terminology server. */
 async function importList(file) {
   const msg = $("#list-msg");
+  if (file.size > MAX_BYTES) { msg.hidden = false; msg.textContent = `${t("listProblems")} ${file.name}`; return; }
+  await importListText(await file.text());
+}
+
+async function importListText(text) {
+  const msg = $("#list-msg");
   const say = (text) => { msg.hidden = !text; msg.textContent = text || ""; };
-  if (file.size > MAX_BYTES) { say(`${t("listProblems")} ${file.name}`); return; }
-  const parsed = parseList(await file.text(), S.snap.cfg);
+  const parsed = parseList(text, S.snap.cfg);
   const problems = [...parsed.problems];
   let added = 0;
   for (const e of parsed.entries) {

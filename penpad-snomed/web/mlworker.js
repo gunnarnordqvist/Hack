@@ -4,6 +4,12 @@
 import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.2";
 
 env.allowLocalModels = false;
+let threadsSet = false;
+function setThreads(n) { // fewer threads = less memory (every thread has its own working memory); the page decides by device
+  if (threadsSet) return;
+  threadsSet = true;
+  try { env.backends.onnx.wasm.numThreads = Math.max(1, Math.min(4, n | 0 || 1)); } catch (_) { /* default */ }
+}
 
 const loaded = new Map(); // key -> Promise<pipeline>
 
@@ -21,6 +27,7 @@ function get(task, model, dtype, id) {
 
 self.onmessage = async (ev) => {
   const { id, op } = ev.data;
+  setThreads(ev.data.threads);
   try {
     if (op === "embed") {
       // texts -> one Float32Array of n x dim, L2-normalised (mean pooling)

@@ -53,6 +53,21 @@ language, which itself mispronounces some words), and 60 phrases give wide inter
   are not pinned to a revision. The worker is same-origin code that sees the text and the audio. The page has no Content-Security-Policy. For
   anything beyond a demo: vendor the library and the models, pin them by hash, and add a CSP.
 
+## Memory, phones and a tab the browser closes
+Measured in headless Chromium (whole browser, resident memory, so it also counts the browser itself, about 450 MB):
+| | before | after |
+|---|---|---|
+| semantic search ready | 1.4 GB (peak 1.6) | 1.4 GB (peak 1.6) |
+| after speech recognition | 2.1 GB (**peak 2.3**) | 0.9 GB (peak 1.9) |
+
+Both models used to stay in memory together; a phone (above all an iPhone) closes a tab long before 2 GB and reloads the page, which a visitor
+saw as "the site restarts when I use the recording". Now (1) the embedding model is released before speech recognition starts and after 20 s
+without use, (2) the speech model is released as soon as it has answered (the files stay in the browser's cache), (3) phones, tablets and devices
+that report 4 GB or less get one worker thread and the small speech models (`kb-whisper-tiny` 119 MB, `whisper-tiny` 40 MB, somewhat less accurate),
+and (4) before a heavy step the text and the list are kept in the tab's session storage; if the page still comes back reloaded, the step is switched
+off with a message, the text and the list are put back, and *Try anyway* turns it on again. **Not verified on a real phone.** Preparing the
+semantic search still needs about 1 GB on top of the browser and may not fit on a small phone: if so the guard switches it off.
+
 ## Limits
 * 118-300 MB of downloads and about two minutes of preparation the first time; much slower on a phone.
 * The semantic search can put a specific subtype before the general concept; when no word matches, the first suggestion is shown with a warning.

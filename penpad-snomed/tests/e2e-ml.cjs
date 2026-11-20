@@ -26,6 +26,21 @@ const check = (name, ok, extra = "") => { console.log(`${ok ? "PASS" : "FAIL"} $
   // 1. nothing is loaded from a model host before the visitor opts in
   check("no model or library host is contacted before opting in", [...hosts.keys()].every((h) => h === site || h === "tx-nordics.fhir.org"), [...hosts.keys()].join(", "));
 
+  // 1b. a tab that the browser closed during a heavy step: simulate it (the flag and the saved text and list are in the tab's session storage)
+  await page.evaluate(async () => {
+    const { serializeList } = await import("./listio.js");
+    const entry = { finding: { code: "25064002", topic: "pain", site: null }, values: { severity: "24484000" }, duration: null };
+    sessionStorage.setItem("penpad-ml-running", "asr");
+    sessionStorage.setItem("penpad-ml-saved", JSON.stringify({ text: "ont i magen sedan igår", list: serializeList([entry]) }));
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForFunction(() => !window.__penpad.busy && window.__penpad.chart.length === 1, null, { timeout: 60000 }).catch(() => {});
+  const rec = await page.evaluate(() => ({ crashed: window.__penpad.ml.crashed, text: document.querySelector("#text").value, list: window.__penpad.chart.length, mic: document.querySelector("#mic") && document.querySelector("#mic").disabled, flag: sessionStorage.getItem("penpad-ml-running"), note: !!document.querySelector("#crash-note") }));
+  check("after a closed tab the text and the list are back and the speech button is off", rec.crashed === "asr" && /magen/.test(rec.text) && rec.list === 1 && rec.mic === true && rec.flag === null && rec.note, JSON.stringify(rec));
+  await page.click("#retry-anyway");
+  check("'try anyway' turns the speech button on again", (await page.evaluate(() => document.querySelector("#mic").disabled)) === false);
+  await page.evaluate(() => { document.querySelector("#clear-list") && document.querySelector("#clear-list").click(); });
+
   // 2. without the model, a paraphrase finds nothing useful
   const HEAD = "25064002"; // headache
   const search = async (text) => {
@@ -39,7 +54,7 @@ const check = (name, ok, extra = "") => { console.log(`${ok ? "PASS" : "FAIL"} $
   check("without the model 'jätteont i huvudet' does not find headache", !before.codes.includes(HEAD), before.codes.join(","));
 
   // 3. turn on semantic search
-  await page.click("#ml summary");
+  await page.evaluate(() => { document.querySelector("#ml").open = true; });
   await page.click("#sem-on");
   await page.waitForFunction(() => ["ready", "error"].includes(window.__penpad.ml.sem), null, { timeout: 600000 });
   const sem = await page.evaluate(() => ({ s: window.__penpad.ml.sem, msg: window.__penpad.ml.semMsg, info: window.__penpad.ml.info }));

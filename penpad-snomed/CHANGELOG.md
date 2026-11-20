@@ -21,6 +21,7 @@ Format: Keep a Changelog. No release has been tagged; tagging v0.1.0 is left to 
 - Optional local AI in the browser: semantic search (multilingual-e5-small) and speech (KB-Whisper/Whisper) with transformers.js in a Web Worker; docs/browser-ml.md, ADR-006, tests/e2e-ml.cjs, tools/eval_browser*.cjs.
 - openEHR: pattern, progression, consistency and bilateral side are now mapped (after Erik Sundvall's penpad-clinergy-workbench, Apache-2.0); only the aspect remains unmapped.
 ### Fixed
+- The page restarted when the recording was used on a phone: both models were in memory at once (2.3 GB). Now one model at a time, small speech models and one thread on small devices, and text and list restored if the browser closes the tab.
 - Findings about the opposite side are no longer listed; English UI no longer shows Swedish suggestions.
 - English search: filler words dropped, synonyms and the server's order used in ranking; everyday pain words (hurts, ont) find the pain concept.
 - English: "stomach ache" gave a quadrant pain, "right leg" found nothing, "since last week" gave no time, and a side was written with a capital letter mid-sentence; a right-sided finding can no longer be offered "left" findings.

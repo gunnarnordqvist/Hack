@@ -174,7 +174,8 @@ rules:
   rule: 'Personal data guard: text that looks like a personal identity number, a phone number, an e-mail address, a name (two capitalised words) or a street
     address is never sent to the terminology server; a warning is shown. The published site contains no SNOMED CT content (no snapshot) and every file the
     page imports exists; the repository holds no secrets. The optional local models are loaded only after the visitor opts in; speech is transcribed in
-    the browser, the sound is never sent anywhere, and no request to the library or model hosts carries the text.'
+    the browser, the sound is never sent anywhere, and no request to the library or model hosts carries the text. Only one local model is in memory at a
+    time; if the browser closes the tab during a heavy step, the text and the list are restored and the step is switched off.'
   example:
     given: '''191212121212'' typed as search'
     then: no request leaves the page
@@ -197,6 +198,9 @@ rules:
   - speech is turned into text in the browser
   - the worker loads a pinned library version and the models are the ones in the dependency policy
   - a double click starts one recording, and closing the panel stops it
+  - phones and devices with little memory get the small speech model, a desktop gets the base model
+  - after a closed tab the text and the list are back and the speech button is off
+  - '''try anyway'' turns the speech button on again'
 never_do:
 - Send anything that looks like personal data to an outside service.
 - Publish SNOMED CT content (snapshots, label files) or copyrighted material.

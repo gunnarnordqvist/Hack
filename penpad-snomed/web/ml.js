@@ -4,7 +4,18 @@
 
 export const EMBED_MODEL = "Xenova/multilingual-e5-small";
 export const ASR_MODELS = { sv: "KBLab/kb-whisper-base", en: "Xenova/whisper-base" };
-export const DOWNLOAD_MB = { embed: 118, asr: { sv: 181, en: 76 } };
+export const ASR_SMALL = { sv: "KBLab/kb-whisper-tiny", en: "Xenova/whisper-tiny" }; // for phones and other devices with little memory
+export const DOWNLOAD_MB = { embed: 118, asr: { sv: 181, en: 76 }, asrSmall: { sv: 119, en: 40 } };
+
+/** Phones, tablets and devices that say they have 4 GB or less: the browser closes a tab that uses too much memory, so use less. */
+export function lowMemory(nav = typeof navigator !== "undefined" ? navigator : {}) {
+  if (typeof nav.deviceMemory === "number" && nav.deviceMemory <= 4) return true;
+  const ua = nav.userAgent || "";
+  return /iPhone|iPad|iPod|Android|Mobile/i.test(ua) || (nav.maxTouchPoints > 1 && /Macintosh/.test(ua)); // iPadOS says "Macintosh"
+}
+export const asrModel = (lang, low = lowMemory()) => (low ? ASR_SMALL : ASR_MODELS)[lang] || (low ? ASR_SMALL : ASR_MODELS).en;
+export const asrMB = (lang, low = lowMemory()) => (low ? DOWNLOAD_MB.asrSmall : DOWNLOAD_MB.asr)[lang] || (low ? DOWNLOAD_MB.asrSmall : DOWNLOAD_MB.asr).en;
+const threads = () => (lowMemory() ? 1 : Math.min(4, (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 2));
 export const LIB_VERSION = "4.3.2"; // must match the import in mlworker.js (tests/ml.test.mjs checks it)
 const DTYPE = "q8";
 const PREFIX = "query: "; // e5 wants a prefix; "query:" on both sides measured better than query/passage for short term names
@@ -59,21 +70,27 @@ export function tidyTranscript(t) {
 }
 
 // ------------------------------------------------------------------------------------------------ worker plumbing
-let worker = null;
+// One worker per kind of model, and only one model in memory at a time: the embedding worker is stopped before speech recognition starts
+// and after 20 s without use, the speech worker as soon as it has answered. (Both together took 2.3 GB; a phone closes the tab long before.)
+const workers = { embed: null, asr: null };
+const idle = { embed: null };
 let nextId = 1;
 const pending = new Map();
 
-function killWorker(reason) {
-  if (worker) worker.terminate();
-  worker = null;
-  for (const p of pending.values()) { clearTimeout(p.timer); p.reject(new Error(reason)); }
-  pending.clear();
+function release(kind, reason = "released") {
+  const w = workers[kind];
+  workers[kind] = null;
+  clearTimeout(idle[kind]);
+  if (w) w.terminate();
+  for (const [id, p] of pending) if (p.kind === kind) { clearTimeout(p.timer); pending.delete(id); p.reject(new Error(reason)); }
 }
+export function releaseAll() { release("embed"); release("asr"); }
 
-function call(msg, onProgress, transfer = [], timeoutMs = 15 * 60 * 1000) {
-  if (!worker) {
-    worker = new Worker(new URL("./mlworker.js", import.meta.url), { type: "module" });
-    worker.onmessage = (ev) => {
+function call(kind, msg, onProgress, transfer = [], timeoutMs = 15 * 60 * 1000) {
+  if (!workers[kind]) {
+    const w = new Worker(new URL("./mlworker.js", import.meta.url), { type: "module" });
+    workers[kind] = w;
+    w.onmessage = (ev) => {
       const p = pending.get(ev.data.id);
       if (!p) return;
       if (ev.data.type === "progress") { if (p.onProgress) p.onProgress(ev.data); return; }
@@ -81,21 +98,27 @@ function call(msg, onProgress, transfer = [], timeoutMs = 15 * 60 * 1000) {
       clearTimeout(p.timer);
       if (ev.data.type === "done") p.resolve(ev.data); else p.reject(new Error(ev.data.message || "worker error"));
     };
-    worker.onerror = (e) => killWorker(e.message || "the model worker failed to load");
-    worker.onmessageerror = () => killWorker("the model worker sent something unreadable");
+    w.onerror = (e) => release(kind, e.message || "the model worker failed to load");
+    w.onmessageerror = () => release(kind, "the model worker sent something unreadable");
   }
   const id = nextId++;
   return new Promise((resolve, reject) => {
     // a download that hangs must not leave the page waiting for ever
-    const timer = setTimeout(() => { if (pending.has(id)) killWorker("the model did not answer in time"); }, timeoutMs);
-    pending.set(id, { resolve, reject, onProgress, timer });
-    worker.postMessage({ id, ...msg }, transfer);
+    const timer = setTimeout(() => { if (pending.has(id)) release(kind, "the model did not answer in time"); }, timeoutMs);
+    pending.set(id, { resolve, reject, onProgress, timer, kind });
+    workers[kind].postMessage({ id, threads: threads(), ...msg }, transfer);
   });
 }
 
 export async function embed(texts, onProgress) {
-  const r = await call({ op: "embed", model: EMBED_MODEL, texts: texts.map((t) => PREFIX + t) }, onProgress);
-  return { vectors: r.vectors, dim: r.dim };
+  release("asr"); // never both models at once
+  try {
+    const r = await call("embed", { op: "embed", model: EMBED_MODEL, texts: texts.map((t) => PREFIX + t) }, onProgress);
+    return { vectors: r.vectors, dim: r.dim };
+  } finally {
+    clearTimeout(idle.embed);
+    idle.embed = setTimeout(() => release("embed"), 20000); // the vectors of the names stay in the page; the model leaves memory when not in use
+  }
 }
 
 // ------------------------------------------------------------------------------------------------ semantic index (with a cache in the browser)
@@ -160,9 +183,13 @@ export async function decodeTo16k(arrayBuffer) {
 }
 
 export async function transcribe(audio16k, lang, onProgress) {
-  const model = ASR_MODELS[lang] || ASR_MODELS.en;
-  const r = await call({ op: "asr", model, audio: audio16k, language: lang === "sv" ? "swedish" : "english" }, onProgress);
-  return tidyTranscript(r.text);
+  release("embed"); // never both models at once: speech recognition is the heavier one
+  try {
+    const r = await call("asr", { op: "asr", model: asrModel(lang), audio: audio16k, language: lang === "sv" ? "swedish" : "english" }, onProgress);
+    return tidyTranscript(r.text);
+  } finally {
+    release("asr"); // the files stay in the browser's cache; the memory is given back at once
+  }
 }
 
 /** Microphone recorder: start() -> {stop(): Promise<Float32Array 16 kHz>}. The sound stays in this page. */
