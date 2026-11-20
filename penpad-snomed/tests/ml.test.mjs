@@ -63,3 +63,56 @@ test("phones and devices with little memory get the small speech model, a deskto
   assert.equal(asrModel("en", true), "Xenova/whisper-tiny");
   assert.ok(asrMB("sv", true) < asrMB("sv", false));
 });
+
+import { speechApi, startSpeechApi } from "../web/ml.js";
+
+// a stand-in for the browser's SpeechRecognition
+function fakeWindow(script) {
+  class SR {
+    constructor() { SR.last = this; this.started = false; }
+    start() { this.started = true; script.onStart && script.onStart(this); }
+    stop() { script.onStop && script.onStop(this); }
+    abort() { this.aborted = true; }
+  }
+  return { webkitSpeechRecognition: SR, SR };
+}
+const results = (...parts) => ({ results: parts.map(([text, isFinal]) => Object.assign([{ transcript: text }], { isFinal })) });
+
+test("the device's speech recognition: the API is found under either name, and not found when absent", () => {
+  assert.equal(speechApi({}), null);
+  const w = fakeWindow({});
+  assert.equal(speechApi(w), w.SR);
+  const w2 = { SpeechRecognition: class {} };
+  assert.equal(speechApi(w2), w2.SpeechRecognition);
+});
+
+test("the device's speech recognition: language, interim words, and the final text on stop", async () => {
+  const w = fakeWindow({ onStop(r) { r.onresult(results(["ont i magen", true], [" kommer och går", false])); r.onend(); } });
+  const seen = [];
+  const rec = startSpeechApi("sv", (t) => seen.push(t), w);
+  assert.equal(w.SR.last.lang, "sv-SE");
+  assert.equal(w.SR.last.interimResults, true);
+  w.SR.last.onresult(results(["ont i"], [])); // never called with an empty list in the real API; harmless here
+  w.SR.last.onresult(results(["ont i magen", false]));
+  assert.deepEqual(seen.at(-1), "ont i magen");
+  assert.equal(await rec.stop(), "ont i magen kommer och går"); // final text first, then what was still interim
+  assert.equal(startSpeechApi("en", null, fakeWindow({})) && true, true);
+});
+
+test("the device's speech recognition: an error is reported in words, and a result wins over a late error", async () => {
+  const w = fakeWindow({ onStop(r) { r.onerror({ error: "service-not-allowed" }); r.onend(); } });
+  await assert.rejects(startSpeechApi("sv", null, w).stop(), /Enable Dictation/);
+  const w2 = fakeWindow({ onStop(r) { r.onresult(results(["ont i magen", true])); r.onerror({ error: "no-speech" }); r.onend(); } });
+  assert.equal(await startSpeechApi("sv", null, w2).stop(), "ont i magen");
+  const w3 = fakeWindow({ onStop(r) { r.onend(); } });
+  assert.equal(await startSpeechApi("en", null, w3).stop(), ""); // nothing heard: an empty text, not an error
+  assert.throws(() => startSpeechApi("sv", null, {}), /no speech recognition/);
+});
+
+test("the device's speech recognition: stop after the recogniser ended on its own still gives the text", async () => {
+  const w = fakeWindow({});
+  const rec = startSpeechApi("en", null, w);
+  w.SR.last.onresult(results(["headache", true]));
+  w.SR.last.onend();
+  assert.equal(await rec.stop(), "headache");
+});

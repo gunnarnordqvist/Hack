@@ -162,3 +162,6 @@ button.secondary { font: inherit; padding: 8px 14px; border: 1px solid var(--acc
 .mlbox { margin-top: 10px; border: 1px dashed var(--line); border-radius: 8px; padding: 6px 12px; }
 .mlbox summary { cursor: pointer; font-size: 14px; color: var(--muted); }
 .mlbox[open] summary { margin-bottom: 8px; }
+
+.engine { gap: 4px 16px; flex-wrap: wrap; font-size: 14px; }
+.engine label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }

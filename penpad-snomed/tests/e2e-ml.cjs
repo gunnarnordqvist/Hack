@@ -65,7 +65,8 @@ const check = (name, ok, extra = "") => { console.log(`${ok ? "PASS" : "FAIL"} $
   const exact = await search("huvudvärk");
   check("a plain word match is still picked first", exact.finding === HEAD, String(exact.finding));
 
-  // 4. speech: the fake microphone plays the recording
+  // 4. speech with the local model: the fake microphone plays the recording
+  await page.evaluate(() => { window.__penpad.ml.engine = "local"; });
   await page.evaluate(() => { window.__penpad.cand = null; window.__penpad.finding = null; window.__penpad.text = ""; });
   await page.click("#mic");
   await page.waitForFunction(() => window.__penpad.ml.mic === "recording", null, { timeout: 20000 });
@@ -93,6 +94,43 @@ const check = (name, ok, extra = "") => { console.log(`${ok ? "PASS" : "FAIL"} $
   const stopped = await page.waitForFunction(() => window.__penpad.ml.mic === "idle", null, { timeout: 5000 }).then(() => true, () => false); // the toggle event comes a moment later
   check("a double click starts one recording, and closing the panel stops it", stopped);
   check("no page errors", errors.length === 0, errors.join(" | "));
+
+  // 6. the device's own speech recognition (Apple's on iPhone and Mac): a stand-in for it is put in the page
+  const dev = await ctx.newPage();
+  const devErrors = [];
+  dev.on("pageerror", (e) => devErrors.push(e.message));
+  const txRequests = [];
+  dev.on("request", (r) => { if (r.url().includes("tx-nordics")) txRequests.push(decodeURIComponent(r.url())); });
+  await dev.addInitScript(() => {
+    window.__heard = ["ont i magen", "ont i magen, kommer och går"];
+    window.SpeechRecognition = window.webkitSpeechRecognition = class { // both names: Chromium has its own, which would otherwise win
+      start() { this.t = setTimeout(() => this.onresult({ results: [Object.assign([{ transcript: window.__heard[0] }], { isFinal: false })] }), 100); }
+      stop() { clearTimeout(this.t); this.onresult({ results: [Object.assign([{ transcript: window.__heard[1] }], { isFinal: true })] }); setTimeout(() => this.onend(), 20); }
+      abort() { clearTimeout(this.t); }
+    };
+  });
+  await dev.goto(url, { waitUntil: "networkidle" });
+  await dev.evaluate(() => { document.querySelector("#ml").open = true; });
+  check("the device's own speech recognition is the default where the browser has it, with a privacy notice", (await dev.evaluate(() => window.__penpad.ml.engine)) === "device" && (await dev.$$("#device-note")).length === 1 && /Apple|Google/.test(await dev.textContent("#device-note")));
+  await dev.evaluate(() => { window.__penpad.finding = null; window.__penpad.cand = null; });
+  await dev.click("#mic");
+  await dev.waitForFunction(() => window.__penpad.ml.mic === "recording", null, { timeout: 10000 });
+  const interimShown = await dev.waitForFunction(() => document.querySelector("#text").value === "ont i magen", null, { timeout: 5000 }).then(() => true, () => false);
+  check("the words appear in the text box while speaking", interimShown);
+  await dev.click("#mic");
+  await dev.waitForFunction(() => !window.__penpad.busy && window.__penpad.finding, null, { timeout: 90000 });
+  const dres = await dev.evaluate(() => ({ f: window.__penpad.finding.code, v: window.__penpad.values, box: document.querySelector("#text").value }));
+  check("the device's text is interpreted like typed text", dres.f === "271681002" && dres.v.pattern === "7087005" && /magen/.test(dres.box), JSON.stringify(dres));
+  // a transcript with an identity number is stopped by the guard before anything is searched
+  await dev.evaluate(() => { window.__heard = ["ont i magen", "191212121212 ont i magen"]; window.__penpad.cand = null; });
+  txRequests.length = 0;
+  await dev.click("#mic");
+  await dev.waitForFunction(() => window.__penpad.ml.mic === "recording", null, { timeout: 10000 });
+  await dev.click("#mic");
+  await dev.waitForFunction(() => !window.__penpad.busy && window.__penpad.cand && window.__penpad.cand.error === "personal", null, { timeout: 30000 });
+  check("a spoken identity number is stopped by the guard and never sent anywhere", txRequests.every((u) => !u.includes("191212121212")) && (await dev.$$("#cand-error")).length === 1, txRequests.join(" | "));
+  check("the device's recogniser loads no model of ours", (await dev.evaluate(() => performance.getEntriesByType("resource").filter((e) => /huggingface|jsdelivr/.test(e.name)).length)) === 0);
+  check("no page errors with the device's recogniser", devErrors.length === 0, devErrors.join(" | "));
 
   await browser.close();
   console.log(`\n${pass}/${pass + fail} checks passed`);

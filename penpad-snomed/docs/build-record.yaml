@@ -30,6 +30,7 @@ deviations:
 
   - "The EmbeddingGemma 2 evaluation (docs/eval-embeddinggemma2.md) was built and run by the assistant on 60 phrases it wrote itself; an independent AI review found real flaws in the first version, which were corrected; no person has reviewed it."
   - "Local models in the browser (docs/browser-ml.md) add code from a CDN without integrity check and unpinned model files; built, measured and tested by the assistant, reviewed by an AI agent (mic left open on double click, guard missed a leading name, an overstated privacy text, races; all fixed), not by a person. Not tested on phones or Safari, or with real voices."
+  - "Speech: the device's own recogniser (Web Speech API) is the default where present; it was tested with a stand-in, not with Apple's real recogniser (no Apple device here). A visitor reported the local model as clearly worse."
 ai_review:
   - {date: 2026-11-18, by: "fresh AI subagent, given the code only", approval: false, findings_fixed: "guard bypass (separators, dashes, full-width digits, phone, spelled-out e-mail), Google Fonts removed, CI permissions scoped per job, persist-credentials false, spec R6 method corrected", findings_open: "guard cannot detect names or addresses; spec check proves test existence, not that a test exercises the rule; e2e not in CI; clientCandidates untested in unit tests"}
 

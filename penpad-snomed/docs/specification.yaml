@@ -174,8 +174,9 @@ rules:
   rule: 'Personal data guard: text that looks like a personal identity number, a phone number, an e-mail address, a name (two capitalised words) or a street
     address is never sent to the terminology server; a warning is shown. The published site contains no SNOMED CT content (no snapshot) and every file the
     page imports exists; the repository holds no secrets. The optional local models are loaded only after the visitor opts in; speech is transcribed in
-    the browser, the sound is never sent anywhere, and no request to the library or model hosts carries the text. Only one local model is in memory at a
-    time; if the browser closes the tab during a heavy step, the text and the list are restored and the step is switched off.'
+    the browser by the local model (the sound is never sent anywhere) or by the device''s own recogniser (the browser vendor may receive the audio, and
+    the page says so), and no request to the library or model hosts carries the text. Only one local model is in memory at a time; if the browser closes
+    the tab during a heavy step, the text and the list are restored and the step is switched off.'
   example:
     given: '''191212121212'' typed as search'
     then: no request leaves the page
@@ -201,6 +202,15 @@ rules:
   - phones and devices with little memory get the small speech model, a desktop gets the base model
   - after a closed tab the text and the list are back and the speech button is off
   - '''try anyway'' turns the speech button on again'
+  - 'the device''s own speech recognition: the API is found under either name, and not found when absent'
+  - 'the device''s speech recognition: language, interim words, and the final text on stop'
+  - 'the device''s speech recognition: an error is reported in words, and a result wins over a late error'
+  - 'the device''s speech recognition: stop after the recogniser ended on its own still gives the text'
+  - the device's own speech recognition is the default where the browser has it, with a privacy notice
+  - the words appear in the text box while speaking
+  - the device's text is interpreted like typed text
+  - a spoken identity number is stopped by the guard and never sent anywhere
+  - the device's recogniser loads no model of ours
 never_do:
 - Send anything that looks like personal data to an outside service.
 - Publish SNOMED CT content (snapshots, label files) or copyrighted material.

@@ -10,8 +10,12 @@ and without sending speech or text to a model service. It is off until the visit
    4,948 names, a handful of requests), embeds them locally with `multilingual-e5-small` (about 100 s the first time on a CPU; the vectors are kept in
    this browser's IndexedDB) and compares them with what was typed. The result is fused with the word search; a confident word match keeps the
    first place. Every suggestion is still a concept the terminology server returned.
-3. **Speech.** The microphone is recorded in the page, resampled to 16 kHz and transcribed by Whisper in the worker (KB-Whisper base for Swedish,
-   Whisper base for English). The transcript is put in the text box, read by the personal-data guard and interpreted like typed text.
+3. **Speech, two engines.** *The device's own* (default where the browser has one: Apple's recogniser in Safari on iPhone and Mac, Google's in
+   Chrome; the Web Speech API): clearly better than any model that fits in a page, and the words appear in the text box while you speak. The
+   browser vendor may receive the audio. *The local model*: the microphone is recorded in the page, resampled to 16 kHz and transcribed by Whisper in the
+   worker (KB-Whisper base for Swedish, Whisper base for English); the sound never leaves the device, but the result is clearly worse (see below). Either
+   way the transcript is put in the text box, read by the personal-data guard and interpreted like typed text. On an iPhone the keyboard's own
+   dictation button also works in the text box without any of this.
 4. **Step 2, fill in the answers,** stays with the word list: an embedding model did not beat it (docs/eval-embeddinggemma2.md).
 
 ## Why these models
@@ -46,12 +50,21 @@ language, which itself mispronounces some words), and 60 phrases give wide inter
 * Before opting in, the page contacts only itself and the terminology server (tested).
 * After opting in it also contacts cdn.jsdelivr.net and huggingface.co; they see the visitor's IP address. A test checks that no request to them
   (address, headers, body) carries the typed or spoken text.
-* The sound never leaves the browser. The transcript is text: its search words go to the terminology server like typed text.
+* **With the local model** the sound never leaves the browser. **With the device's own recogniser** it may: Chrome sends it to Google; Safari and iOS
+  use Apple's recogniser, which sometimes works on the device and sometimes on Apple's servers, and the page cannot tell which. The page says so next to the
+  choice and lets the visitor pick the local model. This site only ever gets the text.
+* The transcript is text: its search words go to the terminology server like typed text.
 * The personal-data guard reads the transcript, but it is blunt: it catches numbers, e-mail addresses, two capitalised words in a row and street
   addresses, not a name in lower case or digits spoken as words.
 * **Supply chain:** the library is a version-pinned CDN URL without subresource integrity (not available for module imports), and the model files
   are not pinned to a revision. The worker is same-origin code that sees the text and the audio. The page has no Content-Security-Policy. For
   anything beyond a demo: vendor the library and the models, pin them by hash, and add a CSP.
+
+## Which speech engine? (a visitor's report, then a measurement of the alternative)
+A visitor found the local model's result "clearly poor" and Apple's own recognition "much better". That matches the measurements above (the local
+model gets 47 % of the Swedish phrases word for word, on clean synthetic speech) and the larger KB-Whisper did not help. Apple's recogniser could not be
+measured here (no Apple device in the test environment); the page therefore offers it as the default where the browser has it, tested with a stand-in
+for the Web Speech API, and keeps the local model for those who want the sound to stay on the device.
 
 ## Memory, phones and a tab the browser closes
 Measured in headless Chromium (whole browser, resident memory, so it also counts the browser itself, about 450 MB):
